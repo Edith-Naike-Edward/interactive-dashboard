@@ -53,8 +53,9 @@ const SignIn = () => {
           </form>
 
           <p className="mt-6 text-justify-center text-md">
-            Don&apos;t have an account? <Link href="/signup" className="w-[404px] h-[35.4px] text-blue-600 font-bold">Sign up</Link>
+            Dont have an account? <Link href="/signup" className="w-[404px] h-[35.4px] text-blue-600 font-bold">Sign up</Link>
           </p>
+          {/* <h2 className="text-red-500">Test Tailwind</h2> */}
         </div>
       </div>
       
