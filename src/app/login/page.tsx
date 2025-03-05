@@ -39,11 +39,11 @@ const SignIn = () => {
           <h3 className="text-lg font-medium mb-6">Please enter your details</h3>
             <div className="text-left">
               <label className="block text-md font-medium mb-2">Email</label>
-              <input type="email" placeholder="Enter your email" className="w-[404px] h-[32px] p-3 border rounded-xl border-grey-200 bg-[#EDF2F7]" onChange={handleChange} />
+              <input type="email" name="email" placeholder="Enter your email" className="w-[404px] h-[32px] p-3 border rounded-xl border-grey-200 bg-[#EDF2F7]" onChange={handleChange} />
             </div>
             <div className="text-left">
               <label className="block text-md font-medium mb-2">Password</label>
-              <input type="password" placeholder="Enter your password" className="w-[404px] h-[32px] p-3 border rounded-xl border-grey-200 bg-[#EDF2F7]" onChange={handleChange} />
+              <input type="password" name="password" placeholder="Enter your password" className="w-[404px] h-[32px] p-3 border rounded-xl border-grey-200 bg-[#EDF2F7]" onChange={handleChange} />
             </div>
             <div className="text-left">
               <a href="#" className="text-md text-blue-600 hover:underline">Forgot your password?</a>

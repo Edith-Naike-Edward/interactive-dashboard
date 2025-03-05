@@ -5,7 +5,7 @@
 @tailwind utilities; */
 
 @import "tailwindcss";
-/* @import "flexmonster/flexmonster.css"; */
+
 
 :root {
   --font-sans: 'Playfair Display', sans-serif;
