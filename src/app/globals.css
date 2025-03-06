@@ -12,6 +12,21 @@
   --font-mono: 'Inter', sans-serif;
   --background: #ffffff;
   --foreground: #171717;
+  --persian-blue: #2514BE;
+  --indigo: #675BD2;
+  --indigo-darkest: #1E1B3F;
+  --indigo-lightest: #EFEEFA;
+  --padua: #A9E5C7;
+  --padua-lightest: #F6FCF9;
+  --padua-darkest: #32443B;
+  --persian-blue-lightest: #E9E7F8;
+  --persian-blue-darkest: #0B0639;
+  --tacao: #F1B597;
+  --tacao-lightest: #FDF7F4;
+  --tacao-darkest: #48362D;
+  --bizarre: #EBD9D9;
+  --bizarre-lightest: #FDFBFB;
+  --bizarre-darkest: #464141;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -30,3 +45,23 @@ body {
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Inter', sans-serif;
 }
+
+.button-primary {
+  background-color: var(--persian-blue);
+  color: white;
+}
+
+.button-primary:hover {
+  background-color: var(--indigo);
+}
+
+.card {
+  background-color: var(--padua-lightest);
+  border: 1px solid var(--bizarre);
+}
+
+.navbar {
+  background-color: var(--indigo-darkest);
+  color: var(--indigo-lightest);
+}
+
