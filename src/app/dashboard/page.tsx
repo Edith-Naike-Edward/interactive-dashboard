@@ -265,6 +265,8 @@ const scatterChartData = useMemo(() => ({
             width: sidebarCollapsed ? 60 : 240,
             transition: "width 0.3s",
             overflowX: "hidden",
+            backgroundColor: "#2514BE", // Add a background color
+            color: "#FFFFFF", // Set text color to white for better contrast
           },
         }}
       >
@@ -274,19 +276,19 @@ const scatterChartData = useMemo(() => ({
         <ListItemText primary="Toggle Sidebar" />
       </ListItem> */}
       <ListItem component="button">
-        <ListItemIcon><DashboardIcon /></ListItemIcon>
+        <ListItemIcon sx={{ color: "#FFFFFF" }}><DashboardIcon /></ListItemIcon>
         <ListItemText primary="Dashboard" />
       </ListItem>
       <ListItem component="button">
-        <ListItemIcon><BarChart /></ListItemIcon>
+        <ListItemIcon sx={{ color: "#FFFFFF" }}><BarChart /></ListItemIcon>
         <ListItemText primary="Screening Data" />
       </ListItem>
       <ListItem component="button">
-        <ListItemIcon><PieChart /></ListItemIcon>
+        <ListItemIcon sx={{ color: "#FFFFFF" }}><PieChart /></ListItemIcon>
         <ListItemText primary="Patient Monitoring Data" />
       </ListItem>
       <ListItem component="button">
-        <ListItemIcon><Map /></ListItemIcon>
+        <ListItemIcon sx={{ color: "#FFFFFF" }}><Map /></ListItemIcon>
         <ListItemText primary="Reports and Insights" />
       </ListItem>
         </List>
@@ -311,34 +313,66 @@ const scatterChartData = useMemo(() => ({
         {/* Dashboard Cards */}
         <Grid container spacing={3} sx={{ mt: 2 }}>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ backgroundColor: "#E9E7F8" }}>
+            <Card sx={{ 
+              backgroundColor: "#E9E7F8",         
+              borderRadius: "16px", // Rounded edges
+              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)", // Add shadow
+              transition: "transform 0.3s, box-shadow 0.3s",
+              "&:hover": {
+                transform: "scale(1.05)",
+                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)", 
+            }, }}>
               <CardContent>
-                <Typography variant="h6">Total Patients</Typography>
-                <Typography variant="h4">{totalPatients}</Typography>
+                <Typography variant="h6" sx={{ color: "#1E1B3F", fontWeight: "bold" }}>Total Patients</Typography>
+                <Typography variant="h4" sx={{ color: "#1E1B3F", fontWeight: "semibold" }}>{totalPatients}</Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ backgroundColor: "#E9E7F8" }}>
+            <Card sx={{ 
+              backgroundColor: "#E9E7F8",         
+              borderRadius: "16px", // Rounded edges
+              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)", // Add shadow
+              transition: "transform 0.3s, box-shadow 0.3s",
+              "&:hover": {
+                transform: "scale(1.05)",
+                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)", 
+            }, }}>
               <CardContent>
-                <Typography variant="h6">Average BMI</Typography>
-                <Typography variant="h4">{avgBMI}</Typography>
+                <Typography variant="h6" sx={{ color: "#1E1B3F", fontWeight: "bold" }}>Average BMI</Typography>
+                <Typography variant="h4"sx={{ color: "#1E1B3F", fontWeight: "semibold" }}>{avgBMI}</Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ backgroundColor: "#E9E7F8" }}>
+            <Card sx={{ 
+              backgroundColor: "#E9E7F8",         
+              borderRadius: "16px", // Rounded edges
+              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)", // Add shadow
+              transition: "transform 0.3s, box-shadow 0.3s",
+              "&:hover": {
+                transform: "scale(1.05)",
+                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)", 
+            }, }}>
               <CardContent>
-                <Typography variant="h6">Average Blood Pressure</Typography>
-                <Typography variant="h4">{avgBP}</Typography>
+                <Typography variant="h6" sx={{ color: "#1E1B3F", fontWeight: "bold" }}>Average Blood Pressure</Typography>
+                <Typography variant="h4" sx={{ color: "#1E1B3F", fontWeight: "semibold" }}>{avgBP}</Typography>
               </CardContent>
             </Card>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ backgroundColor: "#E9E7F8" }}>
+          <Card sx={{ 
+              backgroundColor: "#E9E7F8",         
+              borderRadius: "16px", // Rounded edges
+              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)", // Add shadow
+              transition: "transform 0.3s, box-shadow 0.3s",
+              "&:hover": {
+                transform: "scale(1.05)",
+                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)", 
+            }, }}>
               <CardContent>
-                <Typography variant="h6">Average Glucose</Typography>
-                <Typography variant="h4">{avgGlucose}</Typography>
+                <Typography variant="h6" sx={{ color: "#1E1B3F", fontWeight: "bold" }}>Average Glucose</Typography>
+                <Typography variant="h4" sx={{ color: "#1E1B3F", fontWeight: "semibold" }}>{avgGlucose}</Typography>
               </CardContent>
             </Card>
           </Grid>
