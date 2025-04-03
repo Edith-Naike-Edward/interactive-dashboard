@@ -279,9 +279,9 @@ const scatterChartData = useMemo(() => ({
         <ListItemIcon sx={{ color: "#FFFFFF" }}><DashboardIcon /></ListItemIcon>
         <ListItemText primary="Dashboard" />
       </ListItem>
-      <ListItem component="button">
+      <ListItem component="button" onClick={() => window.location.href = "/patientscreening"}>
         <ListItemIcon sx={{ color: "#FFFFFF" }}><BarChart /></ListItemIcon>
-        <ListItemText primary="Screening Data" />
+        <ListItemText primary="Screening Dashboard" />
       </ListItem>
       <ListItem component="button">
         <ListItemIcon sx={{ color: "#FFFFFF" }}><PieChart /></ListItemIcon>

@@ -6,12 +6,9 @@
 
 @import "tailwindcss";
 
-
 :root {
   --font-sans: 'Playfair Display', sans-serif;
   --font-mono: 'Inter', sans-serif;
-  --background: #ffffff;
-  --foreground: #171717;
   --persian-blue: #2514BE;
   --indigo: #675BD2;
   --indigo-darkest: #1E1B3F;
@@ -29,16 +26,7 @@
   --bizarre-darkest: #464141;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  color: var(--foreground);
-  background: var(--background);
   font-family: var(--font-sans);
 }
 

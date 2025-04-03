@@ -15,14 +15,19 @@
     "@mui/material": "^6.4.6",
     "@types/react-toastify": "^4.1.0",
     "chart.js": "^4.4.8",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "flexmonster": "^2.9.98",
     "highcharts": "^12.1.2",
     "highcharts-react-official": "^3.2.1",
+    "lucide-react": "^0.482.0",
     "next": "15.2.0",
     "react": "^19.0.0",
     "react-chartjs-2": "^5.3.0",
     "react-dom": "^19.0.0",
-    "react-heatmap-grid": "^0.9.1"
+    "react-heatmap-grid": "^0.9.1",
+    "tailwind-merge": "^3.0.2",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
