@@ -11,6 +11,139 @@ export default function Home() {
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedOrg, setSelectedOrg] = useState('Ministry of Health');
+  const [sites, setSites] = useState<{site_id: number, name: string}[]>([]);
+  // const [selectedSite, setSelectedSite] = useState<number | null>(null);
+  const [selectedSite, setSelectedSite] = useState<string>(''); // Initialize as empty string
+
+  // Add these state variables
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+
+  // Login handler function
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/auth/signin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Login failed');
+      }
+
+      const data = await response.json();
+      
+      // Store token and user data
+      localStorage.setItem('token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+      // Close modal and update app state
+      setIsLoginModalOpen(false);
+      
+      // You might want to add state management here for the logged in user
+      console.log('Logged in user:', data.user);
+      
+      // Redirect or show success message
+      alert('Login successful!');
+      
+    } catch (error) {
+      console.error('Login error:', error);
+      alert(error instanceof Error ? error.message : 'Login failed. Please try again.');
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const name = (document.getElementById('signupName') as HTMLInputElement).value;
+    const email = (document.getElementById('signupEmail') as HTMLInputElement).value;
+    const password = (document.getElementById('signupPassword') as HTMLInputElement).value;
+    const confirm = (document.getElementById('signupConfirm') as HTMLInputElement).value;
+  
+    if (password !== confirm) {
+      alert("Passwords don't match!");
+      return;
+    }
+  
+    // if (!selectedRole || !selectedSite) {
+    //   alert("Please select both role and health facility");
+    //   return;
+    // }
+      // Convert to number when needed
+    const siteId = selectedSite ? Number(selectedSite) : null;
+
+    if (!selectedRole || !siteId) {
+      alert("Please select both role and health facility");
+      return;
+    }
+  
+    try {
+      const response = await fetch('http://localhost:8000/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          role: selectedRole,
+          organisation: selectedOrg,
+          password,
+          site_id: siteId
+        }),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Signup failed');
+      }
+  
+      const data = await response.json();
+      setIsSignupModalOpen(false);
+      alert("Account created successfully!");
+    } catch (error) {
+      console.error('Signup error:', error);
+      
+      // Type-safe error handling
+      let errorMessage = 'Signup failed. Please try again.';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
+  useEffect(() => {
+    const loadSites = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/sites');
+        if (!response.ok) throw new Error('Failed to load sites');
+        const data = await response.json();
+        console.log('Sites data:', data); 
+        setSites(data);
+      } catch (error) {
+        console.error('Error loading sites:', error);
+        alert('Failed to load health facilities. Please refresh the page.');
+      }
+    };
+    loadSites();
+  }, []);
+
   // Handle scroll event to change navbar style
   const toggleLoginModal = () => {
     setIsLoginModalOpen(!isLoginModalOpen);
@@ -25,6 +158,21 @@ export default function Home() {
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
+
+  // Add this useEffect to fetch roles and sites on component mount
+useEffect(() => {
+  // Fetch available roles
+  fetch('http://localhost:8000/api/auth/roles')
+    .then(res => res.json())
+    .then(data => setRoles(data))
+    .catch(err => console.error('Error fetching roles:', err));
+
+  // Fetch available sites (you'll need to create this endpoint)
+  fetch('http://localhost:8000/api/sites')
+    .then(res => res.json())
+    .then(data => setSites(data))
+    .catch(err => console.error('Error fetching sites:', err));
+}, []);
 
   useEffect(() => {
 
@@ -280,7 +428,7 @@ export default function Home() {
                 ×
               </button>
             </div>
-            <form>
+            <form onSubmit={handleLogin}>
               <div className="mb-6">
                 <label htmlFor="loginEmail" className="block mb-2 font-medium text-indigo-900">
                   Email Address
@@ -288,6 +436,8 @@ export default function Home() {
                 <input
                   type="email"
                   id="loginEmail"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
                   placeholder="your@email.com"
                   required
@@ -300,6 +450,8 @@ export default function Home() {
                 <input
                   type="password"
                   id="loginPassword"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
                   placeholder="••••••••"
                   required
@@ -334,39 +486,130 @@ export default function Home() {
       {/* Signup Modal */}
       {isSignupModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center transition-opacity">
-          <div className="bg-white p-8 rounded-xl w-full max-w-md shadow-xl transition-transform">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white p-8 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-xl transition-transform">
+            <div className="flex justify-between items-center mb-4">
               <h3 className="text-2xl font-serif">Create Account</h3>
               <button onClick={toggleSignupModal} className="text-2xl bg-transparent border-none text-indigo-900">
                 ×
               </button>
             </div>
-            <form>
-              <div className="mb-4">
+            <form onSubmit={handleSignup}>
+              <div className="mb-3">
                 <label htmlFor="signupName" className="block mb-2 font-medium text-indigo-900">
                   Full Name
                 </label>
                 <input
                   type="text"
                   id="signupName"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
                   placeholder="John Doe"
                   required
                 />
               </div>
-              <div className="mb-4">
+              <div className="mb-3">
                 <label htmlFor="signupEmail" className="block mb-2 font-medium text-indigo-900">
                   Email Address
                 </label>
                 <input
                   type="email"
                   id="signupEmail"
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
                   placeholder="your@email.com"
                   required
                 />
               </div>
-              <div className="mb-4">
+              {/* Role dropdown */}
+              <div className="mb-3">
+                <label htmlFor="signupRole" className="block mb-2 font-medium text-indigo-900">
+                  Role
+                </label>
+                <select
+                  id="signupRole"
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
+                  required
+                >
+                  <option value="">Select a role</option>
+                  {roles.map(role => (
+                    // <option key={role} value={role}>{role}</option>
+                    <option key={`role-${role}`} value={role}>
+                    {role}
+                  </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Organization dropdown */}
+              <div className="mb-3">
+                <label htmlFor="signupOrg" className="block mb-2 font-medium text-indigo-900">
+                  Organization
+                </label>
+                <select
+                  id="signupOrg"
+                  value={selectedOrg}
+                  onChange={(e) => setSelectedOrg(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
+                  required
+                >
+                  <option value="Ministry of Health">Ministry of Health</option>
+                  <option value="Faith-Based Organization">Faith-Based Organization</option>
+                  <option value="Private Practice">Private Practice</option>
+                  <option value="Private Hospital">Private Hospital</option>
+                </select>
+              </div>
+
+              {/* Site dropdown */}
+              {/* <div className="mb-3">
+                <label htmlFor="signupSite" className="block mb-2 font-medium text-indigo-900">
+                  Health Facility
+                </label>
+                <select
+                  id="signupSite"
+                  value={selectedSite || ''}
+                  onChange={(e) => setSelectedSite(Number(e.target.value))}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
+                  required
+                >
+                  <option value="">Select a health facility</option>
+                  {sites.map(site => (
+                    <option key={site.id} value={site.id}>{site.name}</option>
+                  ))}
+                </select>
+              </div> */}
+            
+              <div className="mb-3">
+                <label htmlFor="signupSite" className="block mb-2 font-medium text-indigo-900">
+                  Health Facility
+                </label>
+                <select
+                  id="signupSite"
+                  value={selectedSite ?? ''}
+                  onChange={(e) => setSelectedSite(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
+                  required
+                >
+                  <option value="">Select a health facility</option>
+                  {/* {sites.map(site => (
+                    // <option key={site.id} value={site.id}>{site.name}</option>
+                    <option key={`site-${site.id}`} value={site.id}>
+                    {site.name}
+                  </option>
+                  ))} */}
+                  {sites.map(site => {
+                    if (!site.site_id) {
+                      console.error('Site without ID found:', site);
+                      return null; // or handle this case appropriately
+                    }
+                    return (
+                      <option key={`site-${site.site_id}`} value={site.site_id}>
+                        {site.name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="mb-3">
                 <label htmlFor="signupPassword" className="block mb-2 font-medium text-indigo-900">
                   Password
                 </label>
@@ -378,7 +621,7 @@ export default function Home() {
                   required
                 />
               </div>
-              <div className="mb-6">
+              <div className="mb-5">
                 <label htmlFor="signupConfirm" className="block mb-2 font-medium text-indigo-900">
                   Confirm Password
                 </label>
