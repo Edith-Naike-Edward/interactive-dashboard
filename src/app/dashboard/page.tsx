@@ -1,721 +1,436 @@
 "use client";
-
-import { useEffect, useState } from "react";
-import { useMemo } from "react";
-import {
-  AppBar,
-  Toolbar,
-  IconButton,
-  Typography,
-  InputBase,
-  Badge,
-  Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Box,
-  Grid,
-  Paper,
-  Card,
-  CardContent,
-} from "@mui/material";
-import {
+import { use, useState } from 'react';
+import { 
+  Home, 
+  Database, 
+  Activity, 
+  PieChart, 
+  Monitor, 
+  Settings, 
+  User, 
+  AlertTriangle, 
+  ChevronDown, 
+  ChevronUp, 
   Search,
-  Notifications,
-  AccountCircle,
-  Menu,
-  Dashboard as DashboardIcon,
-  BarChart,
-  PieChart,
-  Map,
-} from "@mui/icons-material";
-import { Bar, Line, Scatter } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
-import { fetchHealthData } from "../utils/api"; // Import the utility function
+  Stethoscope,
+  Heart,
+  Droplet
+} from 'lucide-react';
 
-interface HealthData {
-  id: number;
-  age: number;
-  gender: string;
-  height: number;
-  weight: number;
-  ap_hi: number;
-  ap_lo: number;
-  cholesterol: number;
-  gluc: number;
-  smoke: number;
-  alco: number;
-  active: number;
-  cardio: number;
-  AgeinYr: number;
-  BMI: number;
-  BMICat: string;
-  AgeGroup: string;
-}
+// Sample data for dashboard metrics
+const metrics = [
+  { 
+    title: "New Diagnosis Rate", 
+    value: "45%", 
+    target: "50%", 
+    status: "warning",
+    color: "bg-amber-100 border-amber-500",
+    icon: <Stethoscope className="text-amber-600" />
+  },
+  { 
+    title: "BP Follow-up Rate", 
+    value: "48%", 
+    target: "50%", 
+    status: "warning",
+    color: "bg-rose-100 border-rose-500",
+    icon: <Heart className="text-rose-600" />
+  },
+  { 
+    title: "BG Follow-up Rate", 
+    value: "42%", 
+    target: "50%", 
+    status: "danger",
+    color: "bg-blue-100 border-blue-500",
+    icon: <Droplet className="text-blue-600" />
+  },
+  { 
+    title: "High Risk Patients", 
+    value: "27", 
+    change: "+3",
+    status: "danger",
+    color: "bg-red-100 border-red-500",
+    icon: <AlertTriangle className="text-red-600" />
+  }
+];
 
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+// Sample data for recent patients
+const recentPatients = [
+  { id: "PT20250123", name: "Sarah Johnson", age: 45, lastVisit: "2025-04-30", status: "High Risk" },
+  { id: "PT20250167", name: "Michael Chen", age: 62, lastVisit: "2025-05-01", status: "Stable" },
+  { id: "PT20250189", name: "Emma Rodriguez", age: 51, lastVisit: "2025-05-02", status: "Review Needed" },
+  { id: "PT20250204", name: "David Kim", age: 58, lastVisit: "2025-05-03", status: "Stable" }
+];
 
-export default function DashboardPage() {
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [healthData, setHealthData] = useState<HealthData[]>([]); // Use HealthData type for state
+export default function Dashboard() {
+  const [activeSidebar, setActiveSidebar] = useState("home");
+  type SectionType = 'dashboard' | 'patients' | 'reports' | 'settings'; // add all your possible sections here
 
-  // Fetch health data from the backend
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const data = await fetchHealthData();
-        setHealthData(data);
-      } catch (error) {
-        console.error("Error fetching health data:", error);
-      }
+  const [expandedSection, setExpandedSection] = useState<SectionType | null>(null);
+    
+  const toggleSection = (section: SectionType) => {
+    if (expandedSection === section) {
+      setExpandedSection(null);
+    } else {
+      setExpandedSection(section);
     }
-    loadData();
-  }, []);
-
-  const toggleDrawer = (open: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
-    if (event.type === "keydown" && (event as React.KeyboardEvent).key === "Tab") {
-      return;
-    }
-    setDrawerOpen(open);
   };
 
-  // Sample data for charts
-  const sortedHealthData = [...healthData].sort((a, b) => a.AgeinYr - b.AgeinYr);
-
-  // Bar chart for blood pressure trends
-  // const barChartData = {
-  //   labels: sortedHealthData.map((entry) => entry.AgeinYr),
-  //   datasets: [
-  //     {
-  //       label: "Systolic Blood Pressure (ap_hi)",
-  //       data: sortedHealthData.map((entry) => entry.ap_hi),
-  //       backgroundColor: "rgba(75, 192, 192, 0.6)",
-  //     },
-  //     {
-  //       label: "Diastolic Blood Pressure (ap_lo)",
-  //       data: sortedHealthData.map((entry) => entry.ap_lo),
-  //       backgroundColor: "rgba(255, 99, 132, 0.6)",
-  //     },
-  //   ],
-  // };
-
-  // Line chart for glucose trends
-  // const lineChartData = {
-  //   labels: sortedHealthData.map((entry) => entry.AgeinYr), // Use AgeinYr as labels
-  //   datasets: [
-  //     {
-  //       label: "Glucose Levels",
-  //       data: sortedHealthData.map((entry) => entry.gluc),
-  //       borderColor: "rgba(255, 99, 132, 1)",
-  //       fill: false,
-  //       backgroundColor: "rgba(255, 255, 255, 0.8)", // Change background color
-  //     },
-  //   ],
-  // };
-
-  // // Scatter plot for BMI vs AgeinYr
-  // const scatterChartData = {
-  //   datasets: [
-  //     {
-  //       label: "BMI vs AgeinYr",
-  //       data: sortedHealthData.map((entry) => ({
-  //         x: entry.AgeinYr,
-  //         y: entry.BMI,
-  //       })),
-  //       backgroundColor: "rgba(75, 192, 192, 1)",
-  //       borderColor: "rgba(75, 192, 192, 1)",
-  //       pointRadius: 5,
-  //     },
-  //     {
-  //       label: "Blood Pressure (ap_hi vs ap_lo)",
-  //       data: sortedHealthData.map((entry) => ({
-  //         x: entry.ap_hi,
-  //         y: entry.ap_lo,
-  //       })),
-  //       backgroundColor: "rgba(255, 99, 132, 1)",
-  //       borderColor: "rgba(255, 99, 132, 1)",
-  //       pointRadius: 5,
-  //     },
-  //   ],
-  // };
-  // Memoized Bar Chart Data
-const barChartData = useMemo(() => ({
-  labels: sortedHealthData.map((entry) => entry.AgeinYr),
-  datasets: [
-    {
-      label: "Systolic Blood Pressure (ap_hi)",
-      data: sortedHealthData.map((entry) => entry.ap_hi),
-      backgroundColor: "rgba(75, 192, 192, 0.6)",
+  // List of sidebar items
+  const sidebarItems = [
+    { id: "home", label: "Dashboard", icon: <Home size={20} /> },
+    { 
+      id: "data", 
+      label: "Data Tables", 
+      icon: <Database size={20} />,
+      expandable: true,
+      subItems: [
+        { id: "patient-table", label: "Patient Demographics" },
+        { id: "glucoselog", label: "Glucose Logs" },
+        { id: "diagnosis", label: "Patient Diagnosis" },
+        { id: "lifestyle", label: "Patient Lifestyle" },
+        { id: "medical-review", label: "Medical Reviews" },
+        { id: "compliance", label: "Medical Compliance" },
+        { id: "screeninglog", label: "Screening Logs" },
+        { id: "bplog", label: "BP Logs" },
+        { id: "redrisk", label: "High Risk Patients" },
+      ]
     },
-    // {
-    // //   label: "Diastolic Blood Pressure (ap_lo)",
-    //   data: sortedHealthData.map((entry) => entry.ap_lo),
-    //   backgroundColor: "rgba(255, 99, 132, 0.6)",
-    // },
-  ],
-}), [sortedHealthData]);
-
-// const barChartData = {
-//   labels: sortedHealthData.map((entry) => entry.AgeinYr),
-//   datasets: [
-//     {
-//       label: "Systolic Blood Pressure (ap_hi)",
-//       data: sortedHealthData.map((entry) => entry.ap_hi),
-//       backgroundColor: "rgba(75, 192, 192, 0.6)",
-//     },
-//   ],
-// };
-
-// Memoized Line Chart Data
-const lineChartData = useMemo(() => ({
-  labels: sortedHealthData.map((entry) => entry.AgeinYr),
-  datasets: [
-    {
-      // label: "Glucose Levels",
-      // data: sortedHealthData.map((entry) => entry.gluc),
-      label: "Diastolic Blood Pressure (ap_lo)",
-      data: sortedHealthData.map((entry) => entry.ap_lo),
-      borderColor: "rgba(255, 99, 132, 1)",
-      fill: false,
-      backgroundColor: "rgba(255, 255, 255, 0.8)",
-    },
-  ],
-}), [sortedHealthData]);
-
-// Memoized Scatter Chart Data
-const scatterChartData = useMemo(() => ({
-  datasets: [
-    {
-      label: "BMI vs AgeinYr",
-      data: sortedHealthData.map((entry) => ({
-        x: entry.AgeinYr,
-        y: entry.BMI,
-      })),
-      backgroundColor: "rgba(75, 192, 192, 1)",
-      borderColor: "rgba(75, 192, 192, 1)",
-      pointRadius: 5,
-    },
-    {
-      label: "Blood Pressure (ap_hi vs ap_lo)",
-      data: sortedHealthData.map((entry) => ({
-        x: entry.ap_hi,
-        y: entry.ap_lo,
-      })),
-      backgroundColor: "rgba(255, 99, 132, 1)",
-      borderColor: "rgba(255, 99, 132, 1)",
-      pointRadius: 5,
-    },
-  ],
-}), [sortedHealthData]);
-
-  // Key Metrics
-  const totalPatients = healthData.length;
-  const avgBMI =
-    healthData.length > 0
-      ? (healthData.reduce((sum, entry) => sum + entry.BMI, 0) / healthData.length).toFixed(2)
-      : 0;
-  const avgBP = healthData.length > 0
-    ? `${(
-        healthData.reduce((sum, entry) => sum + entry.ap_hi, 0) / healthData.length
-      ).toFixed(1)}/${(
-        healthData.reduce((sum, entry) => sum + entry.ap_lo, 0) / healthData.length
-      ).toFixed(1)}`
-    : "0/0";
-  const avgGlucose =
-    healthData.length > 0
-      ? (healthData.reduce((sum, entry) => sum + entry.gluc, 0) / healthData.length).toFixed(2)
-      : 0;
+    { id: "monitoring", label: "Site Monitoring", icon: <Monitor size={20} /> },
+    { id: "new-diagnosis", label: "New Diagnosis", icon: <Stethoscope size={20} /> },
+    { id: "followup", label: "BP & BG Follow-up", icon: <Heart size={20} /> },
+    { id: "analytics", label: "Analytics", icon: <Activity size={20} /> },
+    { id: "visualizations", label: "Visualizations", icon: <PieChart size={20} /> },
+    { id: "settings", label: "Settings", icon: <Settings size={20} /> },
+    { id: "profile", label: "Profile", icon: <User size={20} /> }
+  ];
 
   return (
-    <Box sx={{ display: "flex", backgroundColor: "#FDFBFB" }}>
-      {/* Sidebar */}
-      {/* <Drawer
-        variant="permanent"
-        open={drawerOpen}
-        onClose={toggleDrawer}
-        sx={{
-          width: sidebarCollapsed ? 60 : 240,
-          transition: "width 0.3s",
-          "& .MuiDrawer-paper": {
-            width: sidebarCollapsed ? 60 : 240,
-            transition: "width 0.3s",
-            overflowX: "hidden",
-          },
-        }}
-      > */}
-      <Drawer
-        variant="permanent"
-        open={!sidebarCollapsed} // Use the sidebarCollapsed state
-        sx={{
-          width: sidebarCollapsed ? 60 : 240,
-          transition: "width 0.3s",
-          "& .MuiDrawer-paper": {
-            width: sidebarCollapsed ? 60 : 240,
-            transition: "width 0.3s",
-            overflowX: "hidden",
-            backgroundColor: "#2514BE", // Add a background color
-            color: "#FFFFFF", // Set text color to white for better contrast
-          },
-        }}
-      >
-      <List>
-      {/* <ListItem component="button" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
-        <ListItemIcon><Menu /></ListItemIcon>
-        <ListItemText primary="Toggle Sidebar" />
-      </ListItem> */}
-      <ListItem component="button">
-        <ListItemIcon sx={{ color: "#FFFFFF" }}><DashboardIcon /></ListItemIcon>
-        <ListItemText primary="Dashboard" />
-      </ListItem>
-      <ListItem component="button" onClick={() => window.location.href = "/patientscreening"}>
-        <ListItemIcon sx={{ color: "#FFFFFF" }}><BarChart /></ListItemIcon>
-        <ListItemText primary="Screening Dashboard" />
-      </ListItem>
-      <ListItem component="button">
-        <ListItemIcon sx={{ color: "#FFFFFF" }}><PieChart /></ListItemIcon>
-        <ListItemText primary="Patient Monitoring Data" />
-      </ListItem>
-      <ListItem component="button">
-        <ListItemIcon sx={{ color: "#FFFFFF" }}><Map /></ListItemIcon>
-        <ListItemText primary="Reports and Insights" />
-      </ListItem>
-        </List>
-      </Drawer>
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar Navigation */}
+      <div className="w-64 bg-indigo-900 text-white shadow-lg flex flex-col">
+        <div className="p-5 bg-indigo-800">
+          <h1 className="text-xl font-bold">Health Metrics</h1>
+          <p className="text-xs opacity-70">Clinical Dashboard</p>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto py-4">
+          <ul>
+            {sidebarItems.map((item) => (
+              <li key={item.id} className="mb-1">
+                {!item.expandable ? (
+                  <button 
+                    onClick={() => setActiveSidebar(item.id)}
+                    className={`w-full flex items-center px-4 py-3 text-sm ${
+                      activeSidebar === item.id 
+                        ? "bg-indigo-700 border-l-4 border-indigo-300" 
+                        : "hover:bg-indigo-800"
+                    }`}
+                  >
+                    <span className="mr-3">{item.icon}</span>
+                    {item.label}
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      // onClick={() => toggleSection(item.id)}
+                      onClick={() => toggleSection(item.id as SectionType)}
+                      className={`w-full flex items-center justify-between px-4 py-3 text-sm ${
+                        expandedSection === item.id ? "bg-indigo-700" : "hover:bg-indigo-800"
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <span className="mr-3">{item.icon}</span>
+                        {item.label}
+                      </div>
+                      {expandedSection === item.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </button>
+                    
+                    {expandedSection === item.id && (
+                      <ul className="bg-indigo-950 py-2">
+                        {item.subItems.map((subItem) => (
+                          <li key={subItem.id}>
+                            <button 
+                              onClick={() => setActiveSidebar(subItem.id)}
+                              className={`w-full text-left pl-12 pr-4 py-2 text-sm ${
+                                activeSidebar === subItem.id 
+                                  ? "text-indigo-300 font-medium" 
+                                  : "text-gray-300 hover:text-white"
+                              }`}
+                            >
+                              {subItem.label}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+        
+        <div className="p-4 bg-indigo-800 mt-auto">
+          <div className="flex items-center">
+            <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-lg font-semibold">
+              JD
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium">Dr. Jane Doe</p>
+              <p className="text-xs opacity-70">Administrator</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Main Content */}
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-        {/* Header */}
-        <AppBar position="static" sx={{ backgroundColor: "#2514BE" }}>
-          <Toolbar>
-            {/* <IconButton edge="start" color="inherit" onClick={toggleDrawer(true)}> */}
-            <IconButton edge="start" color="inherit" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
-              <Menu />
-            </IconButton>
-            <Typography variant="h6" sx={{ flexGrow: 1 }}>Health Dashboard</Typography>
-            <InputBase placeholder="Search…" sx={{ background: "white", padding: "5px 10px", borderRadius: "5px", marginRight: 2 }} />
-            <IconButton color="inherit"><Badge badgeContent={3} color="error"><Notifications /></Badge></IconButton>
-            <IconButton color="inherit"><AccountCircle /></IconButton>
-          </Toolbar>
-        </AppBar>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Header */}
+        <header className="bg-white border-b border-gray-200 shadow-sm">
+          <div className="flex justify-between items-center px-6 py-4">
+            <h1 className="text-2xl font-bold text-gray-800">Dashboard Overview</h1>
+            
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <input 
+                  type="text" 
+                  placeholder="Search patients..." 
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
+                />
+                <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+              </div>
+              
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100 text-red-600">
+                <AlertTriangle size={20} />
+                <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  5
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
 
-        {/* Dashboard Cards */}
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ 
-              backgroundColor: "#E9E7F8",         
-              borderRadius: "16px", // Rounded edges
-              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)", // Add shadow
-              transition: "transform 0.3s, box-shadow 0.3s",
-              "&:hover": {
-                transform: "scale(1.05)",
-                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)", 
-            }, }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: "#1E1B3F", fontWeight: "bold" }}>Total Patients</Typography>
-                <Typography variant="h4" sx={{ color: "#1E1B3F", fontWeight: "semibold" }}>{totalPatients}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ 
-              backgroundColor: "#E9E7F8",         
-              borderRadius: "16px", // Rounded edges
-              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)", // Add shadow
-              transition: "transform 0.3s, box-shadow 0.3s",
-              "&:hover": {
-                transform: "scale(1.05)",
-                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)", 
-            }, }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: "#1E1B3F", fontWeight: "bold" }}>Average BMI</Typography>
-                <Typography variant="h4"sx={{ color: "#1E1B3F", fontWeight: "semibold" }}>{avgBMI}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ 
-              backgroundColor: "#E9E7F8",         
-              borderRadius: "16px", // Rounded edges
-              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)", // Add shadow
-              transition: "transform 0.3s, box-shadow 0.3s",
-              "&:hover": {
-                transform: "scale(1.05)",
-                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)", 
-            }, }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: "#1E1B3F", fontWeight: "bold" }}>Average Blood Pressure</Typography>
-                <Typography variant="h4" sx={{ color: "#1E1B3F", fontWeight: "semibold" }}>{avgBP}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ 
-              backgroundColor: "#E9E7F8",         
-              borderRadius: "16px", // Rounded edges
-              boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)", // Add shadow
-              transition: "transform 0.3s, box-shadow 0.3s",
-              "&:hover": {
-                transform: "scale(1.05)",
-                boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.2)", 
-            }, }}>
-              <CardContent>
-                <Typography variant="h6" sx={{ color: "#1E1B3F", fontWeight: "bold" }}>Average Glucose</Typography>
-                <Typography variant="h4" sx={{ color: "#1E1B3F", fontWeight: "semibold" }}>{avgGlucose}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        {/* Dashboard Content */}
+        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+          {/* Key Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {metrics.map((metric, index) => (
+              <div 
+                key={index} 
+                className={`bg-white rounded-xl shadow-sm border-l-4 p-6 ${metric.color}`}
+              >
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">{metric.title}</p>
+                    <div className="flex items-baseline mt-1">
+                      <h3 className="text-2xl font-bold text-gray-800">{metric.value}</h3>
+                      {metric.target && (
+                        <span className="ml-2 text-sm text-gray-500">
+                          Target: {metric.target}
+                        </span>
+                      )}
+                      {metric.change && (
+                        <span className={`ml-2 text-sm ${metric.change.startsWith('+') ? 'text-red-600' : 'text-green-600'}`}>
+                          {metric.change}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-full p-3 bg-white shadow-inner">
+                    {metric.icon}
+                  </div>
+                </div>
+                {metric.status === "warning" && (
+                  <div className="mt-3 text-sm text-amber-600 bg-amber-50 rounded p-2 flex items-center">
+                    <AlertTriangle size={16} className="mr-1" />
+                    <span>Below target threshold</span>
+                  </div>
+                )}
+                {metric.status === "danger" && (
+                  <div className="mt-3 text-sm text-red-600 bg-red-50 rounded p-2 flex items-center">
+                    <AlertTriangle size={16} className="mr-1" />
+                    <span>Critical - requires attention</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
 
-        {/* Charts Section */}
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          {/* Line Chart (Glucose Trends) */}
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>Diastolic Blood Pressure (ap_lo)</Typography>
-                <Line data={lineChartData} />
-              </CardContent>
-            </Card>
-          </Grid>
+          {/* Main Dashboard Sections */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Recent Patients */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-bold text-gray-800">Recent Patients</h2>
+                <button className="text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                  View All
+                </button>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 py-3">ID</th>
+                      <th className="px-4 py-3">Name</th>
+                      <th className="px-4 py-3">Age</th>
+                      <th className="px-4 py-3">Last Visit</th>
+                      <th className="px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {recentPatients.map((patient) => (
+                      <tr key={patient.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-900 font-medium">{patient.id}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{patient.name}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{patient.age}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{patient.lastVisit}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            patient.status === 'High Risk' 
+                              ? 'bg-red-100 text-red-800' 
+                              : patient.status === 'Review Needed'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-green-100 text-green-800'
+                          }`}>
+                            {patient.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-          {/* Bar Chart (Blood Pressure Trends) */}
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>Systolic Blood Pressure (ap_hi)</Typography>
-                <Bar data={barChartData} />
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+            {/* Quick Actions */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-6">Quick Actions</h2>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <button className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-lg hover:bg-indigo-50 hover:border-indigo-300 transition-colors">
+                  <Stethoscope size={32} className="text-indigo-600 mb-2" />
+                  <span className="text-sm font-medium text-gray-800">New Diagnosis</span>
+                </button>
+                
+                <button className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-lg hover:bg-rose-50 hover:border-rose-300 transition-colors">
+                  <Heart size={32} className="text-rose-600 mb-2" />
+                  <span className="text-sm font-medium text-gray-800">BP Follow Up</span>
+                </button>
+                
+                <button className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors">
+                  <Droplet size={32} className="text-blue-600 mb-2" />
+                  <span className="text-sm font-medium text-gray-800">BG Follow Up</span>
+                </button>
+                
+                <button className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-lg hover:bg-amber-50 hover:border-amber-300 transition-colors">
+                  <AlertTriangle size={32} className="text-amber-600 mb-2" />
+                  <span className="text-sm font-medium text-gray-800">High Risk Patients</span>
+                </button>
+              </div>
+            </div>
+          </div>
 
-        {/* Scatter Plot (BMI vs Age and Blood Pressure Anomalies) */}
-        <Grid container spacing={3} sx={{ mt: 2 }}>
-          <Grid item xs={12}>
-            <Card>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>BMI vs Age and Blood Pressure Anomalies</Typography>
-                <Scatter data={scatterChartData} />
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-      </Box>
-    </Box>
+          {/* Secondary Dashboard Sections */}
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Recent Activity */}
+            <div className="bg-white rounded-xl shadow-sm p-6 lg:col-span-2">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Recent Activity</h2>
+              
+              <div className="space-y-4">
+                <div className="flex items-start p-3 border-l-4 border-green-500 bg-green-50 rounded">
+                  <div className="mr-4 rounded-full bg-green-200 p-2">
+                    <User size={16} className="text-green-700" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-800">
+                      <span className="font-semibold">Sarah Johnson</span> completed blood glucose follow-up
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Today, 10:23 AM</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start p-3 border-l-4 border-amber-500 bg-amber-50 rounded">
+                  <div className="mr-4 rounded-full bg-amber-200 p-2">
+                    <AlertTriangle size={16} className="text-amber-700" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-800">
+                      <span className="font-semibold">Michael Chen</span> missed blood pressure follow-up appointment
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">Yesterday, 3:45 PM</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start p-3 border-l-4 border-indigo-500 bg-indigo-50 rounded">
+                  <div className="mr-4 rounded-full bg-indigo-200 p-2">
+                    <Stethoscope size={16} className="text-indigo-700" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-800">
+                      <span className="font-semibold">Emma Rodriguez</span> received new diagnosis: Type 2 Diabetes
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">May 2, 2025</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Performance Stats */}
+            <div className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-bold text-gray-800 mb-4">Performance Metrics</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-gray-700">New Diagnosis Rate</span>
+                    <span className="text-gray-500">45%</span>
+                  </div>
+                  {/* <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-amber-500 h-2 rounded-full" style={{ width: '45%' }}></div>
+                  </div> */}
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        {/* <div className="bg-amber-500 h-2 rounded-full progress-45"></div> */}
+                        <div className="bg-amber-500 h-2 rounded-full w-[45%]"></div>
+                      </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-gray-700">BP Follow-up Rate</span>
+                    <span className="text-gray-500">48%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-rose-500 h-2 rounded-full progress-48"></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-gray-700">BG Follow-up Rate</span>
+                    <span className="text-gray-500">42%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    {/* <div className="bg-blue-500 h-2 rounded-full" style={{ width: '42%' }}></div> */}
+                    <div className="bg-blue-500 h-2 rounded-full progress-42"></div>
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-gray-700">Patient Compliance</span>
+                    <span className="text-gray-500">76%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    {/* <div className="bg-green-500 h-2 rounded-full" style={{ width: '76%' }}></div> */}
+                    <div className="bg-green-500 h-2 rounded-full progress-76"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
   );
 }
-// "use client";
-
-// import { useEffect, useState } from "react";
-// import {
-//   AppBar,
-//   Toolbar,
-//   IconButton,
-//   Typography,
-//   InputBase,
-//   Badge,
-//   Drawer,
-//   List,
-//   ListItem,
-//   ListItemIcon,
-//   ListItemText,
-//   Box,
-//   Grid,
-//   Paper,
-//   Card,
-//   CardContent,
-// } from "@mui/material";
-// import {
-//   Search,
-//   Notifications,
-//   AccountCircle,
-//   Menu,
-//   Dashboard as DashboardIcon,
-//   BarChart,
-//   PieChart,
-//   Map,
-// } from "@mui/icons-material";
-// import { Bar, Line, Doughnut } from "react-chartjs-2";
-// import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Tooltip, Legend, ArcElement } from "chart.js";
-// import { fetchHealthData } from "../utils/api"; // Import the utility function
-
-// interface HealthData {
-//   id: number;
-//   age: number;
-//   gender: string;
-//   height: number;
-//   weight: number;
-//   ap_hi: number;
-//   ap_lo: number;
-//   cholesterol: number;
-//   gluc: number;
-//   smoke: number;
-//   alco: number;
-//   active: number;
-//   cardio: number;
-//   AgeinYr: number;
-//   BMI: number;
-//   BMICat: string;
-//   AgeGroup: string;
-// }
-
-// // Register Chart.js components
-// ChartJS.register(
-//   CategoryScale,
-//   LinearScale,
-//   BarElement,
-//   PointElement,
-//   LineElement,
-//   Title,
-//   Tooltip,
-//   Legend,
-//   ArcElement
-// );
-
-// export default function DashboardPage() {
-//   const [drawerOpen, setDrawerOpen] = useState(false);
-//   // const [healthData, setHealthData] = useState([]);
-//   const [healthData, setHealthData] = useState<HealthData[]>([]); // Use HealthData type for state
-
-//   // Fetch health data from the backend
-//   useEffect(() => {
-//     async function loadData() {
-//       try {
-//         const data = await fetchHealthData();
-//         setHealthData(data);
-//       } catch (error) {
-//         console.error("Error fetching health data:", error);
-//       }
-//     }
-//     loadData();
-//   }, []);
-
-//   const toggleDrawer = (open: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
-//     if (event.type === "keydown" && (event as React.KeyboardEvent).key === "Tab") {
-//       return;
-//     }
-//     setDrawerOpen(open);
-//   };
-
-//   // Sample data for charts
-//   // Sort healthData by AgeinYr in ascending order
-//   const sortedHealthData = [...healthData].sort((a, b) => a.AgeinYr - b.AgeinYr);
-
-//   const barChartData = {
-//     labels: sortedHealthData.map((entry) => entry.AgeinYr),
-//     datasets: [
-//       {
-//         label: "Systolic Blood Pressure (ap_hi)",
-//         data: sortedHealthData.map((entry) => entry.ap_hi),
-//         backgroundColor: "rgba(75, 192, 192, 0.6)",
-//       },
-//     ],
-//   };
-
-//   const lineChartData = {
-//     labels: sortedHealthData.map((entry) => entry.AgeinYr), // Use AgeinYr as labels
-//     datasets: [
-//       {
-//         label: "Glucose Levels",
-//         data: sortedHealthData.map((entry) => entry.gluc),
-//         borderColor: "rgba(255, 99, 132, 1)",
-//         fill: false,
-//       },
-//     ],
-//   };
-
-//     // Group health data by BMI category (BMICat) and count occurrences
-//   const bmiCategories = ["Normal", "Over Weight", "Obese"];
-//   const bmiCounts = bmiCategories.map(category => 
-//     healthData.filter(entry => entry.BMICat === category).length
-//   );
-
-//   const donutChartData = {
-//     labels: bmiCategories, // Labels for the donut chart
-//     datasets: [
-//       {
-//         data: bmiCounts, // Counts of each BMI category
-//         backgroundColor: ["#36A2EB", "#FFCE56", "#FF6384"],
-//       },
-//     ],
-//   };
-
-//   return (
-//     <Box sx={{ display: "flex" }}>
-//       {/* Sidebar */}
-//       <Drawer open={drawerOpen} onClose={toggleDrawer(false)}>
-//         <List>
-//           <ListItem component="button">
-//             <ListItemIcon><DashboardIcon /></ListItemIcon>
-//             <ListItemText primary="Dashboard" />
-//           </ListItem>
-//           <ListItem component="button">
-//             <ListItemIcon><BarChart /></ListItemIcon>
-//             <ListItemText primary="Screening Data" />
-//           </ListItem>
-//           <ListItem component="button">
-//             <ListItemIcon><PieChart /></ListItemIcon>
-//             <ListItemText primary="Patient Monitoring Data" />
-//           </ListItem>
-//           <ListItem component="button">
-//             <ListItemIcon><Map /></ListItemIcon>
-//             <ListItemText primary="Reports and Insights" />
-//           </ListItem>
-//         </List>
-//       </Drawer>
-
-//       {/* Main Content */}
-//       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-//         {/* Header */}
-//         <AppBar position="static">
-//           <Toolbar>
-//             <IconButton edge="start" color="inherit" onClick={toggleDrawer(true)}>
-//               <Menu />
-//             </IconButton>
-//             <Typography variant="h6" sx={{ flexGrow: 1 }}>Health Dashboard</Typography>
-//             <InputBase placeholder="Search…" sx={{ background: "white", padding: "5px 10px", borderRadius: "5px", marginRight: 2 }} />
-//             <IconButton color="inherit"><Badge badgeContent={3} color="error"><Notifications /></Badge></IconButton>
-//             <IconButton color="inherit"><AccountCircle /></IconButton>
-//           </Toolbar>
-//         </AppBar>
-
-//         {/* Dashboard Cards */}
-//         <Grid container spacing={3} sx={{ mt: 2 }}>
-//           <Grid item xs={12} sm={6} md={3}>
-//             <Card>
-//               <CardContent>
-//               <Typography variant="h6">Total Patients</Typography>
-//               <Typography variant="h4">{healthData.length}</Typography>
-//               </CardContent>
-//             </Card>
-//           </Grid>
-//           <Grid item xs={12} sm={6} md={3}>
-//             <Card>
-//               <CardContent>
-//               <Typography variant="h6">Average BMI</Typography>
-//                 <Typography variant="h4">
-//                   {healthData.length > 0
-//                     ? (healthData.reduce((sum, entry) => sum + entry.BMI, 0) / healthData.length).toFixed(2)
-//                     : 0}
-//                 </Typography>
-//               </CardContent>
-//             </Card>
-//           </Grid>
-//           <Grid item xs={12} sm={6} md={3}>
-//             <Card>
-//               <CardContent>
-//                 <Typography variant="h6">Average Blood Pressure</Typography>
-//                 <Typography variant="h4">
-//                   {healthData.length > 0
-//                     ? `${(
-//                         healthData.reduce((sum, entry) => sum + entry.ap_hi, 0) / healthData.length
-//                       ).toFixed(1)}/${(
-//                         healthData.reduce((sum, entry) => sum + entry.ap_lo, 0) / healthData.length
-//                       ).toFixed(1)}`
-//                     : "0/0"}
-//                 </Typography>
-//               </CardContent>
-//             </Card>
-//           </Grid>
-//           <Grid item xs={12} sm={6} md={3}>
-//             <Card>
-//               <CardContent>
-//                 <Typography variant="h6">Average Glucose</Typography>
-//                 <Typography variant="h4">
-//                   {healthData.length > 0
-//                     ? (healthData.reduce((sum, entry) => sum + entry.gluc, 0) / healthData.length).toFixed(2)
-//                     : 0}
-//                 </Typography>
-//               </CardContent>
-//             </Card>
-//           </Grid>
-//         </Grid>
- 
-//         {/* Charts Section */}
-//         <Grid container spacing={3} sx={{ mt: 2 }}>
-//           {/* Line Chart (Glucose Trends) */}
-//           <Grid item xs={10} md={6}>
-//             <Card>
-//               <CardContent>
-//                 <Typography variant="h6" gutterBottom>Glucose Trends</Typography>
-//                 <Line data={lineChartData} />
-//               </CardContent>
-//             </Card>
-//           </Grid>
-
-//           {/* Donut Chart (BMI Categories) - Placed to the right of the line chart
-//           <Grid item xs={12} md={6}>
-//             <Card>
-//               <CardContent>
-//                 <Typography variant="h6" gutterBottom>BMI Categories</Typography>
-//                 <Doughnut data={donutChartData} />
-//               </CardContent>
-//             </Card>
-//           </Grid> */}
-
-//           {/* Bar Chart (Cholesterol Levels) - Placed below the line chart */}
-//           <Grid item xs={10} md={6}>
-//             <Card>
-//               <CardContent>
-//                 <Typography variant="h6" gutterBottom>Cholesterol Levels</Typography>
-//                 <Bar data={barChartData} />
-//               </CardContent>
-//             </Card>
-//           </Grid>
-//         </Grid>
-
-
-//         {/* Heatmap and Tables Section */}
-//         <Grid container spacing={3} sx={{ mt: 2 }}>
-//           <Grid item xs={12} md={6}>
-//             <Card>
-//               <CardContent>
-//                 <Typography variant="h6" gutterBottom>Health Data Heatmap</Typography>
-//                 {/* Implement your Heatmap component here */}
-//                 <Paper elevation={3} sx={{ height: 300 }}>
-//                   {/* Heatmap visualization */}
-//                 </Paper>
-//               </CardContent>
-//             </Card>
-//           </Grid>
-
-//           <Grid item xs={12} md={3}>
-//             <Card>
-//               <CardContent>
-//                 <Typography variant="h6" gutterBottom>Table 1</Typography>
-//                 {/* Implement your table here */}
-//                 <Paper elevation={3}>
-//                   {/* Table content */}
-//                 </Paper>
-//               </CardContent>
-//             </Card>
-//           </Grid>
-
-//           <Grid item xs={12} md={3}>
-//             <Card>
-//               <CardContent>
-//                 <Typography variant="h6" gutterBottom>Table 2</Typography>
-//                 {/* Implement your table here */}
-//                 <Paper elevation={3}>
-//                   {/* Table content */}
-//                 </Paper>
-//               </CardContent>
-//             </Card>
-//           </Grid>
-//         </Grid>
-//       </Box>
-//     </Box>
-//   );
-// }

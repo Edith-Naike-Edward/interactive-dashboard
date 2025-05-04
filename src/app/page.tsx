@@ -1,7 +1,6 @@
 'use client';
 
 import Head from 'next/head';
-// import HeroSection from '@/app/components/HeroSection/HeroSection';
 import { useEffect, useState, useRef } from 'react';
 
 export default function Home() {
@@ -76,12 +75,6 @@ export default function Home() {
       alert("Passwords don't match!");
       return;
     }
-  
-    // if (!selectedRole || !selectedSite) {
-    //   alert("Please select both role and health facility");
-    //   return;
-    // }
-      // Convert to number when needed
     const siteId = selectedSite ? Number(selectedSite) : null;
 
     if (!selectedRole || !siteId) {
@@ -558,25 +551,6 @@ useEffect(() => {
                   <option value="Private Hospital">Private Hospital</option>
                 </select>
               </div>
-
-              {/* Site dropdown */}
-              {/* <div className="mb-3">
-                <label htmlFor="signupSite" className="block mb-2 font-medium text-indigo-900">
-                  Health Facility
-                </label>
-                <select
-                  id="signupSite"
-                  value={selectedSite || ''}
-                  onChange={(e) => setSelectedSite(Number(e.target.value))}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-blue-100"
-                  required
-                >
-                  <option value="">Select a health facility</option>
-                  {sites.map(site => (
-                    <option key={site.id} value={site.id}>{site.name}</option>
-                  ))}
-                </select>
-              </div> */}
             
               <div className="mb-3">
                 <label htmlFor="signupSite" className="block mb-2 font-medium text-indigo-900">
@@ -590,12 +564,6 @@ useEffect(() => {
                   required
                 >
                   <option value="">Select a health facility</option>
-                  {/* {sites.map(site => (
-                    // <option key={site.id} value={site.id}>{site.name}</option>
-                    <option key={`site-${site.id}`} value={site.id}>
-                    {site.name}
-                  </option>
-                  ))} */}
                   {sites.map(site => {
                     if (!site.site_id) {
                       console.error('Site without ID found:', site);
