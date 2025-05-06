@@ -68,23 +68,6 @@ type Alert = {
   acknowledged: boolean;
 };
 
-// type ActivityDeclineData = {
-//     active_sites: number;
-//     active_users: number;
-//     site_activity_declined_5_percent: boolean;
-//     user_activity_declined_5_percent: boolean;
-//     historical_data: {
-//       sites: Array<{
-//         date: string;
-//         count: number;
-//       }>;
-//       users: Array<{
-//         date: string;
-//         count: number;
-//       }>;
-//     };
-//   };
-
 type ActivityDeclineData = {
   current: {
     sites: number;
@@ -755,21 +738,27 @@ export default function SiteMonitoringDashboard() {
                 <div>
                     <p className="text-sm font-bold text-indigo">Site Activity Decline</p>
                     <p className={`text-lg font-semibold ${activityDecline.site_activity_declined_5_percent ? 'text-red-600' : 'text-green-600'}`}>
-                    {activityDecline.site_activity_declined_5_percent ? '↓ More than 5%' : 'No Significant Decline'}
+                      {activityDecline.site_activity_declined_5_percent ? '↓ More than 5%' : 'No Significant Decline'}
                     </p>
-                </div>
-                <PieChart className={`h-8 w-8 ${activityDecline.site_activity_declined_5_percent ? 'text-red-500' : 'text-green-500'}`} />
+                    <p className="text-xs text-indigo">
+                      Previous: {activityDecline.previous.sites} → Current: {activityDecline.current.sites}
+                    </p>
+                  </div>
+                  <PieChart className={`h-8 w-8 ${activityDecline.site_activity_declined_5_percent ? 'text-red-500' : 'text-green-500'}`} />
                 </div>
 
                 <div className="p-4 bg-white rounded-lg shadow flex items-center justify-between">
-                <div>
+                  <div>
                     <p className="text-sm font-bold text-indigo">User Activity Decline</p>
                     <p className={`text-lg font-semibold ${activityDecline.user_activity_declined_5_percent ? 'text-red-600' : 'text-green-600'}`}>
-                    {activityDecline.user_activity_declined_5_percent ? '↓ More than 5%' : 'No Significant Decline'}
+                      {activityDecline.user_activity_declined_5_percent ? '↓ More than 5%' : 'No Significant Decline'}
                     </p>
+                    <p className="text-xs text-indigo">
+                      Previous: {activityDecline.previous.users} → Current: {activityDecline.current.users}
+                    </p>
+                  </div>
+                  <Users className={`h-8 w-8 ${activityDecline.user_activity_declined_5_percent ? 'text-red-500' : 'text-green-500'}`} />
                 </div>
-                <Users className={`h-8 w-8 ${activityDecline.user_activity_declined_5_percent ? 'text-red-500' : 'text-green-500'}`} />
-                </div> 
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="flex justify-center items-center h-64 bg-bizarre-darkest border-2 border-dashed border-indigo rounded-lg">
@@ -866,8 +855,8 @@ export default function SiteMonitoringDashboard() {
                 <div className="text-center">
                   <p className="text-sm font-build text-indigo">Site and user activity trends (Last 30 Days)</p>
                   <div className="mt-6 p-4 bg-white rounded-lg shadow">
-                  <div className="h-40 w-200">
-                    <Line 
+                  <div className="h-40 w-100">
+                  <Line 
                       data={{
                         labels: [
                           ...(activityDecline.historical_data?.sites?.map((item) => item.date) || []),
@@ -879,76 +868,30 @@ export default function SiteMonitoringDashboard() {
                             label: 'Active Sites',
                             data: [
                               ...(activityDecline.historical_data?.sites?.map((item) => item.count) || []),
-                              activityDecline.previous?.sites || 0,
-                              activityDecline.current?.sites || 0
+                              activityDecline.previous.sites,
+                              activityDecline.current.sites
                             ],
                             borderColor: '#4CAF50',
                             backgroundColor: 'rgba(76, 175, 80, 0.1)',
                             tension: 0.3,
-                            borderWidth: 2,
-                            yAxisID: 'y',
-                            pointBackgroundColor: (ctx) => {
-                              // Highlight current and previous points
-                              if (ctx.dataIndex === activityDecline.historical_data?.sites?.length) {
-                                return '#FFA500'; // Orange for previous
-                              }
-                              if (ctx.dataIndex === (activityDecline.historical_data?.sites?.length || 0) + 1) {
-                                return '#FF0000'; // Red for current
-                              }
-                              return '#4CAF50'; // Green for historical
-                            },
-                            pointRadius: (ctx) => {
-                              // Make current and previous points larger
-                              const totalPoints = (activityDecline.historical_data?.sites?.length || 0) + 2;
-                              return [totalPoints - 2, totalPoints - 1].includes(ctx.dataIndex) ? 5 : 3;
-                            }
+                            borderWidth: 2
                           },
                           {
                             label: 'Active Users',
                             data: [
                               ...(activityDecline.historical_data?.users?.map((item) => item.count) || []),
-                              activityDecline.previous?.users || 0,
-                              activityDecline.current?.users || 0
+                              activityDecline.previous.users,
+                              activityDecline.current.users
                             ],
                             borderColor: '#2196F3',
                             backgroundColor: 'rgba(33, 150, 243, 0.1)',
                             tension: 0.3,
-                            borderWidth: 2,
-                            yAxisID: 'y',
-                            // pointBackgroundColor: (ctx) => {
-                            //   if (ctx.dataIndex === activityDecline.historical_data?.users?.length) {
-                            //     return '#FFA500'; // Orange for previous
-                            //   }
-                            //   if (ctx.dataIndex === (activityDecline.historical_data?.users?.length || 0) + 1) {
-                            //     return '#FF0000'; // Red for current
-                            //   }
-                            //   return '#2196F3'; // Blue for historical
-                            // },
-                            // pointRadius: (ctx) => {
-                            //   const totalPoints = (activityDecline.historical_data?.sites?.length || 0) + 2;
-                            //   const currentIndex = ctx.dataIndex;
-                            //   return [totalPoints - 2, totalPoints - 1].includes(currentIndex) ? 5 : 3;
-                            // }
-                            pointBackgroundColor: (ctx) => {
-                              const totalPoints = (activityDecline.historical_data?.users?.length || 0) + 2;
-                              if (ctx.dataIndex === totalPoints - 2) return '#FFA500';
-                              if (ctx.dataIndex === totalPoints - 1) return '#FF0000';
-                              return '#2196F3';
-                            },
-                            pointRadius: (ctx) => {
-                              const totalPoints = (activityDecline.historical_data?.users?.length || 0) + 2;
-                              return [totalPoints - 2, totalPoints - 1].includes(ctx.dataIndex) ? 5 : 3;
-                            }
+                            borderWidth: 2
                           }
                         ]
                       }}
                       options={{
                         responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                          mode: 'index',
-                          intersect: false
-                        },
                         plugins: {
                           legend: {
                             position: 'top',
@@ -979,29 +922,7 @@ export default function SiteMonitoringDashboard() {
                         },
                         scales: {
                           y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            title: {
-                              display: true,
-                              text: 'Active Count'
-                            },
                             beginAtZero: false
-                          },
-                          x: {
-                            title: {
-                              display: true,
-                              text: 'Date'
-                            },
-                            ticks: {
-                              callback: function(tickValue: string | number, index: number, ticks: Tick[]) {
-                                const label = this.getLabelForValue(tickValue as number); // Typecast to number if needed
-                                if (label === 'Previous' || label === 'Current') {
-                                  return label;
-                                }
-                                return label.split('-').slice(1).join('-');
-                              }
-                            }
                           }
                         }
                       }}

@@ -1,5 +1,6 @@
 "use client";
-import { use, useState } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Home, 
   Database, 
@@ -62,6 +63,7 @@ const recentPatients = [
 ];
 
 export default function Dashboard() {
+  const router = useRouter();
   const [activeSidebar, setActiveSidebar] = useState("home");
   type SectionType = 'dashboard' | 'patients' | 'reports' | 'settings'; // add all your possible sections here
 
@@ -119,7 +121,14 @@ export default function Dashboard() {
               <li key={item.id} className="mb-1">
                 {!item.expandable ? (
                   <button 
-                    onClick={() => setActiveSidebar(item.id)}
+                  onClick={() => {
+                    setActiveSidebar(item.id);
+                    if (item.id === 'monitoring') {
+                      router.push('/interactive-dashboard'); // ✅ Route to your page
+                    } else if (item.id === 'home') {
+                      router.push('/dashboard'); // Optional, route back home
+                    }
+                  }}                  
                     className={`w-full flex items-center px-4 py-3 text-sm ${
                       activeSidebar === item.id 
                         ? "bg-indigo-700 border-l-4 border-indigo-300" 
@@ -150,7 +159,14 @@ export default function Dashboard() {
                         {item.subItems.map((subItem) => (
                           <li key={subItem.id}>
                             <button 
-                              onClick={() => setActiveSidebar(subItem.id)}
+                              onClick={() => {
+                                setActiveSidebar(item.id);
+                                if (item.id === 'monitoring') {
+                                  router.push('/interactive-dashboard'); // ✅ Route to your page
+                                } else if (item.id === 'home') {
+                                  router.push('/dashboard'); 
+                                }
+                              }}                              
                               className={`w-full text-left pl-12 pr-4 py-2 text-sm ${
                                 activeSidebar === subItem.id 
                                   ? "text-indigo-300 font-medium" 
