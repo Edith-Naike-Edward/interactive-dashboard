@@ -855,7 +855,7 @@ export default function SiteMonitoringDashboard() {
                 <div className="text-center">
                   <p className="text-sm font-build text-indigo">Site and user activity trends (Last 30 Days)</p>
                   <div className="mt-6 p-4 bg-white rounded-lg shadow">
-                  <div className="h-40 w-100">
+                  <div className="h-40 w-200">
                   <Line 
                       data={{
                         labels: [

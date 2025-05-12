@@ -168,14 +168,6 @@ const AnomalyIndicator = ({ tableId }: { tableId: string }) => {
   );
 };
 
-// Condition indicator component
-// const ConditionIndicator = ({ condition }: { condition: boolean }) => {
-//   return (
-//     <span className={`inline-block w-3 h-3 rounded-full ${
-//       condition ? 'bg-red-500' : 'bg-blue-300'
-//     }`}></span>
-//   );
-// };
 const ConditionIndicator = ({ condition, type }: { condition: boolean, type: 'htn' | 'diabetes' | 'mental' }) => {
   const colors = {
     htn: condition ? 'bg-blue-500' : 'bg-gray-300',
@@ -381,7 +373,7 @@ export default function DataTablesPage() {
   const [viewMode, setViewMode] = useState("table");
   const [filterOpen, setFilterOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(5); // Change default to 5 to match your data
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -404,9 +396,15 @@ export default function DataTablesPage() {
     const currentTable = dataTables.find(table => table.id === activeTable);
     const tableColumns = getTableColumns(activeTable);
 
+    // useEffect(() => {
+    //   setCurrentPage(1);
+    // }, [activeTable]);
+
     useEffect(() => {
-      setCurrentPage(1);
-    }, [activeTable]);
+      setCurrentPage(1); // Reset to first page when table or filters change
+    }, [activeTable, searchQuery]);
+
+   
 
     // Fetch patient data from API
     useEffect(() => {
@@ -414,6 +412,7 @@ export default function DataTablesPage() {
         try {
           setLoading(true);
           setError(null);
+          console.log('Fetching patients...'); 
           const response = await fetch('http://localhost:8000/api/patients');
           
           if (!response.ok) {
@@ -421,6 +420,7 @@ export default function DataTablesPage() {
           }
           
           const data = await response.json();
+          console.log('Received data:', data);
           setPatients(data);
         } catch (err) {
           console.error("Failed to fetch patients:", err);
@@ -433,114 +433,180 @@ export default function DataTablesPage() {
       fetchPatients();
     }, []);
 
-    const filteredData = currentTable ? currentTable.data.filter(item => 
-      Object.values(item).some(
+    // const filteredData = currentTable ? currentTable.data.filter(item => 
+    //   Object.values(item).some(
+    //     value => value && value.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    //   )
+    // ) : [];
+    // const filteredData = patients.filter(patient => 
+    //   Object.values(patient).some(
+    //     value => value && value.toString().toLowerCase().includes(searchQuery.toLowerCase())
+    //   )
+    // );
+    const filteredData = currentTable ? currentTable.data.filter(item => {
+      if (!item) return false;
+      return Object.values(item).some(
         value => value && value.toString().toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    ) : [];
+      );
+    }) : [];
+
+     // Add this useEffect to log pagination changes
+    useEffect(() => {
+      console.log('Pagination updated:', {
+        currentPage,
+        itemsPerPage,
+        filteredDataLength: filteredData.length,
+        totalPages,
+        showingItems: `${indexOfFirstItem}-${indexOfLastItem}`
+      });
+    }, [currentPage, itemsPerPage, filteredData.length]);
 
     const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+    console.log('Filtered data length:', filteredData.length);
+    console.log('Current page:', currentPage);
+    console.log('Items per page:', itemsPerPage);
+    console.log('Showing items:', indexOfFirstItem, 'to', indexOfLastItem);
   
-    // Pagination controls component
     // const PaginationControls = () => {
+    //   if (loading) return null;
+    //   if (filteredData.length == 0) return null;
+    
     //   return (
-    //     <div className="flex items-center justify-between mt-4">
-    //       <div>
-    //         <p className="text-sm text-gray-700">
-    //           Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
-    //           <span className="font-medium">
-    //             {Math.min(indexOfLastItem, filteredData.length)}
-    //           </span>{' '}
-    //           of <span className="font-medium">{filteredData.length}</span> results
-    //         </p>
-    //       </div>
-    //       <div className="flex space-x-2">
+    //     <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+    //       <div className="flex-1 flex justify-between sm:hidden">
     //         <button
     //           onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
     //           disabled={currentPage === 1}
-    //           className={`px-3 py-1 rounded-md ${
-    //             currentPage === 1
-    //               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-    //               : 'bg-white text-gray-700 hover:bg-gray-50'
-    //           }`}
+    //           className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
     //         >
     //           Previous
     //         </button>
-    //         {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-    //           // Show pages around current page
-    //           let pageNum;
-    //           if (totalPages <= 5) {
-    //             pageNum = i + 1;
-    //           } else if (currentPage <= 3) {
-    //             pageNum = i + 1;
-    //           } else if (currentPage >= totalPages - 2) {
-    //             pageNum = totalPages - 4 + i;
-    //           } else {
-    //             pageNum = currentPage - 2 + i;
-    //           }
-              
-    //           return (
-    //             <button
-    //               key={pageNum}
-    //               onClick={() => setCurrentPage(pageNum)}
-    //               className={`px-3 py-1 rounded-md ${
-    //                 currentPage === pageNum
-    //                   ? 'bg-indigo-600 text-white'
-    //                   : 'bg-white text-gray-700 hover:bg-gray-50'
-    //               }`}
-    //             >
-    //               {pageNum}
-    //             </button>
-    //           );
-    //         })}
-    //         {totalPages > 5 && currentPage < totalPages - 2 && (
-    //           <span className="px-3 py-1">...</span>
-    //         )}
-    //         {totalPages > 5 && currentPage < totalPages - 2 && (
-    //           <button
-    //             onClick={() => setCurrentPage(totalPages)}
-    //             className="px-3 py-1 bg-white text-gray-700 hover:bg-gray-50 rounded-md"
-    //           >
-    //             {totalPages}
-    //           </button>
-    //         )}
     //         <button
     //           onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
     //           disabled={currentPage === totalPages}
-    //           className={`px-3 py-1 rounded-md ${
-    //             currentPage === totalPages
-    //               ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-    //               : 'bg-white text-gray-700 hover:bg-gray-50'
-    //           }`}
+    //           className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
     //         >
     //           Next
     //         </button>
+    //       </div>
+    //       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+    //         <div>
+    //           <p className="text-sm text-gray-700">
+    //             Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
+    //             <span className="font-medium">{Math.min(indexOfLastItem, filteredData.length)}</span> of{' '}
+    //             <span className="font-medium">{filteredData.length}</span> results
+    //           </p>
+    //         </div>
+    //         <div>
+    //           <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+    //             <button
+    //               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+    //               disabled={currentPage === 1}
+    //               className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+    //             >
+    //               <span className="sr-only">Previous</span>
+    //               Previous
+    //             </button>
+                
+    //             {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+    //               let pageNum;
+    //               if (totalPages <= 5) {
+    //                 pageNum = i + 1;
+    //               } else if (currentPage <= 3) {
+    //                 pageNum = i + 1;
+    //               } else if (currentPage >= totalPages - 2) {
+    //                 pageNum = totalPages - 4 + i;
+    //               } else {
+    //                 pageNum = currentPage - 2 + i;
+    //               }
+                  
+    //               return (
+    //                 <button
+    //                   key={pageNum}
+    //                   onClick={() => setCurrentPage(pageNum)}
+    //                   className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+    //                     currentPage === pageNum
+    //                       ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+    //                       : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+    //                   }`}
+    //                 >
+    //                   {pageNum}
+    //                 </button>
+    //               );
+    //             })}
+    
+    //             {totalPages > 5 && currentPage < totalPages - 2 && (
+    //               <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+    //                 ...
+    //               </span>
+    //             )}
+    
+    //             {totalPages > 5 && currentPage < totalPages - 2 && (
+    //               <button
+    //                 onClick={() => setCurrentPage(totalPages)}
+    //                 className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+    //               >
+    //                 {totalPages}
+    //               </button>
+    //             )}
+    
+    //             <button
+    //               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+    //               disabled={currentPage === totalPages}
+    //               className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+    //             >
+    //               <span className="sr-only">Next</span>
+    //               Next
+    //             </button>
+    //           </nav>
+    //         </div>
     //       </div>
     //     </div>
     //   );
     // };
     const PaginationControls = () => {
-      if (filteredData.length <= itemsPerPage) return null;
+      // Debug why controls might not show
+      console.log('PaginationControls render:', {
+        hasData: filteredData.length > 0,
+        loading,
+        currentPage,
+        totalPages
+      });
+    
+      if (filteredData.length === 0) return null;
     
       return (
         <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          {/* Mobile view */}
           <div className="flex-1 flex justify-between sm:hidden">
             <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              onClick={() => {
+                console.log('Previous button clicked');
+                setCurrentPage(prev => Math.max(prev - 1, 1));
+              }}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Previous
             </button>
+            <span className="px-4 py-2 text-sm text-gray-700">
+              Page {currentPage} of {totalPages}
+            </span>
             <button
-              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              onClick={() => {
+                console.log('Next button clicked');
+                setCurrentPage(prev => Math.min(prev + 1, totalPages));
+              }}
               disabled={currentPage === totalPages}
-              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Next
             </button>
           </div>
+    
+          {/* Desktop view - simplified for debugging */}
           <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-gray-700">
@@ -550,65 +616,66 @@ export default function DataTablesPage() {
               </p>
             </div>
             <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                 <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  onClick={() => {
+                    console.log('First page clicked');
+                    setCurrentPage(1);
+                  }}
                   disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">First</span>
+                  «
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('Previous page clicked');
+                    setCurrentPage(prev => Math.max(prev - 1, 1));
+                  }}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="sr-only">Previous</span>
-                  Previous
+                  ‹
                 </button>
-                
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === pageNum
-                          ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
     
-                {totalPages > 5 && currentPage < totalPages - 2 && (
-                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
-                    ...
-                  </span>
-                )}
-    
-                {totalPages > 5 && currentPage < totalPages - 2 && (
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
-                  >
-                    {totalPages}
-                  </button>
-                )}
+                {/* Simplified page numbers for debugging */}
+                <button
+                  onClick={() => {
+                    console.log('Page 1 clicked');
+                    setCurrentPage(1);
+                  }}
+                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                    currentPage === 1
+                      ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                  }`}
+                >
+                  1
+                </button>
     
                 <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  onClick={() => {
+                    console.log('Next page clicked');
+                    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+                  }}
                   disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                  className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="sr-only">Next</span>
-                  Next
+                  ›
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('Last page clicked');
+                    setCurrentPage(totalPages);
+                  }}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">Last</span>
+                  »
                 </button>
               </nav>
             </div>
@@ -616,6 +683,99 @@ export default function DataTablesPage() {
         </div>
       );
     };
+
+    // const PaginationControls = () => {
+    //   // Always show if there's data, even if it fits on one page
+    //   if (filteredData.length === 0) return null;
+    
+    //   return (
+    //     <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+    //       {/* Mobile view */}
+    //       <div className="flex-1 flex justify-between sm:hidden">
+    //         <button
+    //           onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+    //           disabled={currentPage === 1}
+    //           className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    //         >
+    //           Previous
+    //         </button>
+    //         <span className="px-4 py-2 text-sm text-gray-700">
+    //           Page {currentPage} of {totalPages}
+    //         </span>
+    //         <button
+    //           onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+    //           disabled={currentPage === totalPages}
+    //           className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    //         >
+    //           Next
+    //         </button>
+    //       </div>
+    
+    //       {/* Desktop view */}
+    //       <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+    //         <div>
+    //           <p className="text-sm text-gray-700">
+    //             Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
+    //             <span className="font-medium">{Math.min(indexOfLastItem, filteredData.length)}</span> of{' '}
+    //             <span className="font-medium">{filteredData.length}</span> results
+    //           </p>
+    //         </div>
+    //         <div>
+    //           <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+    //             <button
+    //               onClick={() => setCurrentPage(1)}
+    //               disabled={currentPage === 1}
+    //               className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    //             >
+    //               <span className="sr-only">First</span>
+    //               «
+    //             </button>
+    //             <button
+    //               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+    //               disabled={currentPage === 1}
+    //               className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    //             >
+    //               <span className="sr-only">Previous</span>
+    //               ‹
+    //             </button>
+    
+    //             {/* Page numbers */}
+    //             {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+    //               <button
+    //                 key={page}
+    //                 onClick={() => setCurrentPage(page)}
+    //                 className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+    //                   currentPage === page
+    //                     ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+    //                     : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+    //                 }`}
+    //               >
+    //                 {page}
+    //               </button>
+    //             ))}
+    
+    //             <button
+    //               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+    //               disabled={currentPage === totalPages}
+    //               className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    //             >
+    //               <span className="sr-only">Next</span>
+    //               ›
+    //             </button>
+    //             <button
+    //               onClick={() => setCurrentPage(totalPages)}
+    //               disabled={currentPage === totalPages}
+    //               className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    //             >
+    //               <span className="sr-only">Last</span>
+    //               »
+    //             </button>
+    //           </nav>
+    //         </div>
+    //       </div>
+    //     </div>
+    //   );
+    // };
 
 // DataTable Row component for patient table
 const PatientTableRow = ({ patient }: { patient: PatientData }) => {
@@ -719,7 +879,10 @@ const PatientTableRow = ({ patient }: { patient: PatientData }) => {
                 />
                 <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
               </div>
-              <button className="flex items-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+              <button 
+                className="flex items-center px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                onClick={handleRefresh}
+              >
                 <RefreshCcw size={16} className="mr-2" />
                 Refresh
               </button>
@@ -954,6 +1117,27 @@ const PatientTableRow = ({ patient }: { patient: PatientData }) => {
               {currentItems.length > 0 ? (
                 <>
                   <div className="overflow-x-auto">
+                  <div className="flex items-center mb-4">
+                    <label htmlFor="itemsPerPage" className="mr-2 text-sm text-gray-700">
+                      Items per page:
+                    </label>
+                    <select
+                      id="itemsPerPage"
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        const newValue = Number(e.target.value);
+                        console.log('Items per page changed to:', newValue);
+                        setItemsPerPage(newValue);
+                        setCurrentPage(1); // Reset to first page
+                      }}
+                      className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                  </div>
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
@@ -982,43 +1166,7 @@ const PatientTableRow = ({ patient }: { patient: PatientData }) => {
                       </tbody>
                     </table>
                   </div>
-                  
-                  {/* Pagination controls */}
                   {filteredData.length > 0 && <PaginationControls />}
-                  {/* {filteredData.length > 0 &&  ( <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                      <div className="flex-1 flex justify-between sm:hidden">
-                        <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                          Previous
-                        </button>
-                        <button className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                          Next
-                        </button>
-                      </div>
-                      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-sm text-gray-700">
-                            Showing <span className="font-medium">1</span> to <span className="font-medium">{filteredData.length}</span> of{' '}
-                            <span className="font-medium">{filteredData.length}</span> results
-                          </p>
-                        </div>
-                        <div>
-                          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                            <button className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                              <span className="sr-only">Previous</span>
-                              Previous
-                            </button>
-                            <button className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                              1
-                            </button>
-                            <button className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
-                              <span className="sr-only">Next</span>
-                              Next
-                            </button>
-                          </nav>
-                        </div>
-                      </div>
-                    </div>
-                    )}      */}
                 </>
               ) : (
                 <div className="py-12 flex flex-col items-center justify-center text-gray-500">

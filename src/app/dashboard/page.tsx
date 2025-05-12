@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Home, 
@@ -17,6 +17,35 @@ import {
   Heart,
   Droplet
 } from 'lucide-react';
+
+type MetricsData = {
+  current: {
+    new_diagnoses: number;
+    bp_followup: number;
+    bg_followup: number;
+    bp_controlled: number;
+    timestamp: string;
+  };
+  previous: {
+    new_diagnoses: number;
+    bp_followup: number;
+    bg_followup: number;
+    bp_controlled: number;
+    timestamp: string;
+  };
+  percent_changes: {
+    new_diagnoses: number;
+    bp_followup: number;
+    bg_followup: number;
+    bp_controlled: number;
+  };
+  threshold_violations: {
+    new_diagnoses: boolean;
+    bp_followup: boolean;
+    bg_followup: boolean;
+    bp_controlled: boolean;
+  };
+};
 
 // Sample data for dashboard metrics
 const metrics = [
@@ -54,13 +83,23 @@ const metrics = [
   }
 ];
 
-// Sample data for recent patients
-const recentPatients = [
-  { id: "PT20250123", name: "Sarah Johnson", age: 45, lastVisit: "2025-04-30", status: "High Risk" },
-  { id: "PT20250167", name: "Michael Chen", age: 62, lastVisit: "2025-05-01", status: "Stable" },
-  { id: "PT20250189", name: "Emma Rodriguez", age: 51, lastVisit: "2025-05-02", status: "Review Needed" },
-  { id: "PT20250204", name: "David Kim", age: 58, lastVisit: "2025-05-03", status: "Stable" }
-];
+type Patient = {
+  patient_id: string;
+  first_name: string;
+  last_name: string;
+  middle_name: string;
+  age: number;
+  county_name: string;
+  occupation: string;
+  site_name: string;
+  has_hypertension?: boolean;
+  has_diabetes?: boolean;
+  has_mental_health_issue?: boolean;
+  on_htn_meds?: boolean;
+  on_diabetes_meds?: boolean;
+  on_mh_treatment?: boolean;
+};
+
 
 export default function Dashboard() {
   const router = useRouter();
@@ -68,6 +107,42 @@ export default function Dashboard() {
   type SectionType = 'dashboard' | 'patients' | 'reports' | 'settings'; // add all your possible sections here
 
   const [expandedSection, setExpandedSection] = useState<SectionType | null>(null);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        console.log('Fetching patients...');
+
+        // Fetch data from your API endpoint
+        const response = await fetch('http://localhost:8000/api/patients');
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Received data:', data);
+
+        // Set the fetched patients data
+        setPatients(data);
+      } catch (err) {
+        console.error("Failed to fetch patients:", err);
+        setError(err instanceof Error ? err.message : 'Failed to load patient data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPatients();
+  }, []); // Empty dependency array ensures this runs once after the initial render
+
+  if (loading) return <div>Loading patients...</div>;
+  if (error) return <div>Error: {error}</div>;
     
   const toggleSection = (section: SectionType) => {
     if (expandedSection === section) {
@@ -105,6 +180,7 @@ export default function Dashboard() {
     { id: "settings", label: "Settings", icon: <Settings size={20} /> },
     { id: "profile", label: "Profile", icon: <User size={20} /> }
   ];
+
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -162,7 +238,25 @@ export default function Dashboard() {
                               onClick={() => {
                                 setActiveSidebar(item.id);
                                 if (item.id === 'monitoring') {
-                                  router.push('/interactive-dashboard'); // ✅ Route to your page
+                                  router.push('/site-monitoring'); // ✅ Route to your page
+                                } else if (item.id === 'followup') {
+                                  router.push('/followup'); // ✅ Route to your page
+                                } else if (item.id === 'analytics') {
+                                  router.push('/analytics'); // ✅ Route to your page
+                                } else if (item.id === 'visualizations') {
+                                  router.push('/visualizations'); // ✅ Route to your page
+                                } else if (item.id === 'settings') {
+                                  router.push('/settings'); // ✅ Route to your page
+                                } else if (item.id === 'profile') {
+                                  router.push('/profile'); // ✅ Route to your page
+                                } else if (item.id === 'data') {
+                                  router.push('/datatables'); // ✅ Route to your page
+                                } else if (item.id === 'new-diagnosis') {
+                                  router.push('/new-diagnosis'); // ✅ Route to your page
+                                } else if (item.id === 'followup') {
+                                  router.push('/followup'); // ✅ Route to your page
+                                } else if (item.id === 'analytics') {
+                                  router.push('/analytics'); // ✅ Route to your page
                                 } else if (item.id === 'home') {
                                   router.push('/dashboard'); 
                                 }
@@ -282,41 +376,72 @@ export default function Dashboard() {
                   View All
                 </button>
               </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <th className="px-4 py-3">ID</th>
-                      <th className="px-4 py-3">Name</th>
-                      <th className="px-4 py-3">Age</th>
-                      <th className="px-4 py-3">Last Visit</th>
-                      <th className="px-4 py-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {recentPatients.map((patient) => (
-                      <tr key={patient.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900 font-medium">{patient.id}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{patient.name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">{patient.age}</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">{patient.lastVisit}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            patient.status === 'High Risk' 
-                              ? 'bg-red-100 text-red-800' 
-                              : patient.status === 'Review Needed'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-green-100 text-green-800'
-                          }`}>
-                            {patient.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+              {loading ? (
+            <div className="flex justify-center items-center h-40">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+            </div>
+          ) : error ? (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-red-500" />
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
               </div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3">ID</th>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Age</th>
+                    <th className="px-4 py-3">County</th>
+                    <th className="px-4 py-3">Conditions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {patients.map((patient) => (
+                    <tr key={patient.patient_id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-900 font-medium">
+                        {patient.patient_id}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {`${patient.first_name} ${patient.last_name}`}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {patient.age}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {patient.county_name}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          patient.has_hypertension && patient.has_diabetes 
+                            ? 'bg-red-100 text-red-800' 
+                            : patient.has_hypertension || patient.has_diabetes
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-green-100 text-green-800'
+                        }`}>
+                          {patient.has_hypertension && patient.has_diabetes 
+                            ? 'Hypertension & Diabetes' 
+                            : patient.has_hypertension
+                              ? 'Hypertension'
+                              : patient.has_diabetes
+                                ? 'Diabetes'
+                                : 'No conditions'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              </div>
+            )}
             </div>
 
             {/* Quick Actions */}
