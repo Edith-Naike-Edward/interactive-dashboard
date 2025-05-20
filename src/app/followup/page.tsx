@@ -166,10 +166,10 @@ export default function FollowUpPage() {
       try {
         // Fetch all data in parallel
         const [bpResponse, bgResponse, diagnosesResponse, metricsResponse] = await Promise.all([
-          fetch('http://localhost:8000/api/bp-logs'),
-          fetch('http://localhost:8000/api/glucose-logs'),
-          fetch('http://localhost:8000/api/diagnoses'),
-          fetch('http://localhost:8000/api/monitoring-metrics')
+          fetch('http://localhost:8010/api/bp-logs'),
+          fetch('http://localhost:8010/api/glucose-logs'),
+          fetch('http://localhost:8010/api/diagnoses'),
+          fetch('http://localhost:8010/api/monitoring-metrics')
         ]);
   
         // Check all responses
@@ -209,7 +209,7 @@ export default function FollowUpPage() {
       setError(null);
 
       try {
-        const response = await fetch('http://localhost:8000/api/monitoring-metrics');
+        const response = await fetch('http://localhost:8010/api/monitoring-metrics');
         if (!response.ok) throw new Error('Failed to fetch metrics data');
         const result = await response.json();
         setMetrics(result);
@@ -223,7 +223,7 @@ export default function FollowUpPage() {
     fetchMetrics();
   }, []);
 
-  const PaginationControls = ({ 
+const PaginationControls = ({ 
     currentPage, 
     totalItems, 
     itemsPerPage, 
@@ -236,12 +236,14 @@ export default function FollowUpPage() {
   }) => {
     const totalPages = Math.ceil(totalItems / itemsPerPage);
 
+    console.log({ currentPage, totalItems, itemsPerPage, totalPages }); 
+  
     return (
       <div className="flex justify-between items-center mt-4">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className={`px-4 py-2 rounded-md ${currentPage === 1 ? 'bg-gray-200 cursor-not-allowed' : 'bg-persian-blue text-white hover:bg-persian-blue-dark'}`}
+          className={`px-4 py-2 rounded-md ${currentPage === 1 ? 'bg-gray-200 cursor-not-allowed' : 'bg-persian-blue text-black hover:bg-persian-blue-dark'}`}
         >
           Previous
         </button>
@@ -251,7 +253,7 @@ export default function FollowUpPage() {
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className={`px-4 py-2 rounded-md ${currentPage === totalPages ? 'bg-gray-200 cursor-not-allowed' : 'bg-persian-blue text-white hover:bg-persian-blue-dark'}`}
+          className={`px-4 py-2 rounded-md ${currentPage === totalPages ? 'bg-gray-200 cursor-not-allowed' : 'bg-persian-blue text-black hover:bg-persian-blue-dark'}`}
         >
           Next
         </button>
