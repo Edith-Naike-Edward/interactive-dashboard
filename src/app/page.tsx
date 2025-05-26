@@ -1,9 +1,11 @@
-'use client';
+"use client";
 
 import Head from 'next/head';
+import { useRouter } from 'next/navigation'; 
 import { useEffect, useState, useRef } from 'react';
 
 export default function Home() {
+  const router = useRouter();
   const floatingDataRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<HTMLDivElement>(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
@@ -26,7 +28,7 @@ export default function Home() {
     e.preventDefault();
     
     try {
-      const response = await fetch('http://localhost:8000/api/auth/signin', {
+      const response = await fetch('http://localhost:8010/api/auth/signin', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,8 +56,8 @@ export default function Home() {
       // You might want to add state management here for the logged in user
       console.log('Logged in user:', data.user);
       
-      // Redirect or show success message
-      alert('Login successful!');
+      // Redirect to dashboard
+      router.push('/dashboard');
       
     } catch (error) {
       console.error('Login error:', error);
@@ -83,7 +85,7 @@ export default function Home() {
     }
   
     try {
-      const response = await fetch('http://localhost:8000/api/auth/register', {
+      const response = await fetch('http://localhost:8010/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,7 +107,9 @@ export default function Home() {
   
       const data = await response.json();
       setIsSignupModalOpen(false);
-      alert("Account created successfully!");
+      // alert("Account created successfully!");
+      // Redirect to dashboard
+      router.push('/dashboard');
     } catch (error) {
       console.error('Signup error:', error);
       
@@ -124,7 +128,7 @@ export default function Home() {
   useEffect(() => {
     const loadSites = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/sites');
+        const response = await fetch('http://localhost:8010/api/sites');
         if (!response.ok) throw new Error('Failed to load sites');
         const data = await response.json();
         console.log('Sites data:', data); 
@@ -155,13 +159,13 @@ export default function Home() {
   // Add this useEffect to fetch roles and sites on component mount
 useEffect(() => {
   // Fetch available roles
-  fetch('http://localhost:8000/api/auth/roles')
+  fetch('http://localhost:8010/api/auth/roles')
     .then(res => res.json())
     .then(data => setRoles(data))
     .catch(err => console.error('Error fetching roles:', err));
 
   // Fetch available sites (you'll need to create this endpoint)
-  fetch('http://localhost:8000/api/sites')
+  fetch('http://localhost:8010/api/sites')
     .then(res => res.json())
     .then(data => setSites(data))
     .catch(err => console.error('Error fetching sites:', err));

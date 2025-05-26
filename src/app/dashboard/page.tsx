@@ -119,7 +119,7 @@ export default function Dashboard() {
         console.log('Fetching patients...');
 
         // Fetch data from your API endpoint
-        const response = await fetch('http://localhost:8000/api/patients');
+        const response = await fetch('http://localhost:8010/api/patients');
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
