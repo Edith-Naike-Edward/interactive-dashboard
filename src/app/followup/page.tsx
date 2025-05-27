@@ -478,7 +478,7 @@ const PaginationControls = ({
 
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-              {/* New Diagnoses */}
+              {/* New Diagnoses
               <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-center mb-4">
@@ -489,10 +489,10 @@ const PaginationControls = ({
                   <p className="text-sm text-indigo mt-2">vs {metrics.previous.new_diagnoses} last period</p>
                 </div>
                 <div className="mt-4">{renderTrendIndicator(metrics.percent_changes.new_diagnoses)}</div>
-              </div>
+              </div>*}
 
               {/* BP Follow-up */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
+              {/* <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-medium">BP Follow-up</h3>
@@ -505,7 +505,7 @@ const PaginationControls = ({
               </div>
 
               {/* BG Follow-up */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
+              {/* <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-medium">BG Follow-up</h3>
@@ -515,6 +515,77 @@ const PaginationControls = ({
                   <p className="text-sm text-indigo mt-2">vs {metrics.previous.bg_followup}% last period</p>
                 </div>
                 <div className="mt-4">{renderTrendIndicator(metrics.percent_changes.bg_followup)}</div>
+              </div> */}
+
+              {/* BP Controlled */}
+              {/* <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">BP Controlled</h3>
+                    <BarChart3 className={`h-6 w-6 ${metrics.threshold_violations.bp_controlled ? 'text-red-500' : 'text-green-500'}`} />
+                  </div>
+                  <p className="text-3xl font-bold">{metrics.current.bp_controlled}%</p>
+                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.bp_controlled}% last period</p>
+                </div>
+                <div className="mt-4">{renderTrendIndicator(metrics.percent_changes.bp_controlled)}</div>
+              </div> */}
+            </div> 
+
+              {/* New Diagnoses */}
+              <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">New Diagnoses</h3>
+                    <WarningAmber className={`h-6 w-6 ${metrics.threshold_violations.new_diagnoses ? 'text-red-500' : 'text-green-500'}`} />
+                  </div>
+                  <p className="text-3xl font-bold">{metrics.current.new_diagnoses}</p>
+                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.new_diagnoses} last period</p>
+                </div>
+                <p className={`mt-4 text-sm ${metrics.percent_changes.new_diagnoses < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                  {metrics.percent_changes.new_diagnoses < 0 ? (
+                    `${Math.abs(metrics.percent_changes.new_diagnoses)}% drop`
+                  ) : (
+                    `${metrics.percent_changes.new_diagnoses}% increase`
+                  )}
+                </p>
+              </div>
+
+              {/* BP Follow-up */}
+              <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">BP Follow-up</h3>
+                    <Activity className={`h-6 w-6 ${metrics.threshold_violations.bp_followup ? 'text-red-500' : 'text-green-500'}`} />
+                  </div>
+                  <p className="text-3xl font-bold">{metrics.current.bp_followup}%</p>
+                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.bp_followup}% last period</p>
+                </div>
+                <p className={`mt-4 text-sm ${metrics.percent_changes.bp_followup < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                  {metrics.percent_changes.bp_followup < 0 ? (
+                    `${Math.abs(metrics.percent_changes.bp_followup)}% drop`
+                  ) : (
+                    `${metrics.percent_changes.bp_followup}% increase`
+                  )}
+                </p>
+              </div>
+
+              {/* BG Follow-up */}
+              <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium">BG Follow-up</h3>
+                    <Thermometer className={`h-6 w-6 ${metrics.threshold_violations.bg_followup ? 'text-red-500' : 'text-green-500'}`} />
+                  </div>
+                  <p className="text-3xl font-bold">{metrics.current.bg_followup}%</p>
+                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.bg_followup}% last period</p>
+                </div>
+                <p className={`mt-4 text-sm ${metrics.percent_changes.bg_followup < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                  {metrics.percent_changes.bg_followup < 0 ? (
+                    `${Math.abs(metrics.percent_changes.bg_followup)}% drop`
+                  ) : (
+                    `${metrics.percent_changes.bg_followup}% increase`
+                  )}
+                </p>
               </div>
 
               {/* BP Controlled */}
@@ -527,8 +598,13 @@ const PaginationControls = ({
                   <p className="text-3xl font-bold">{metrics.current.bp_controlled}%</p>
                   <p className="text-sm text-indigo mt-2">vs {metrics.previous.bp_controlled}% last period</p>
                 </div>
-                <div className="mt-4">{renderTrendIndicator(metrics.percent_changes.bp_controlled)}</div>
-              </div>
+                <p className={`mt-4 text-sm ${metrics.percent_changes.bp_controlled < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                  {metrics.percent_changes.bp_controlled < 0 ? (
+                    `${Math.abs(metrics.percent_changes.bp_controlled)}% drop`
+                  ) : (
+                    `${metrics.percent_changes.bp_controlled}% increase`
+                  )}
+                </p>
             </div>
 
 

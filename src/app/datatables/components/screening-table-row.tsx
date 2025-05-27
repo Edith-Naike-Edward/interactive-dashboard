@@ -18,18 +18,40 @@ export function ScreeningTableRow({ screening }: ScreeningTableRowProps) {
         {screening.age}
       </td>
       <td className="px-4 py-3 text-sm">
+        {typeof screening.bmi === 'number' ? `${screening.bmi.toFixed(2)} kg/m²` : 'N/A'}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        {screening.site_name}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        {screening.category || 'N/A'}
+      </td>
+      <td className="px-4 py-3 text-sm">
         {screening.avg_systolic}/{screening.avg_diastolic} mmHg
       </td>
       <td className="px-4 py-3 text-sm">
         {screening.glucose_value} mg/dL ({screening.glucose_type})
       </td>
       <td className="px-4 py-3 text-sm">
-        <StatusBadge 
-          status={screening.cvd_risk_level} 
-          highClass="bg-red-100 text-red-800"
-          mediumClass="bg-yellow-100 text-yellow-800"
-          lowClass="bg-green-100 text-green-800"
-        />
+        {screening.avg_pulse} bpm
+      </td>
+      <td className="px-4 py-3 text-sm">
+        {screening.phq4_risk_level || 'N/A'}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        {screening.phq4_score || 'N/A'}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        {screening.cvd_risk_score || 'N/A'}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        {screening.cvd_risk_level || 'N/A'}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        {screening.national_id}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        {screening.is_regular_smoker ? 'Yes' : 'No'}
       </td>
       <td className="px-4 py-3 text-sm">
         {new Date(screening.updated_at).toLocaleDateString()}

@@ -46,15 +46,15 @@ const getRowKey = (item: TableItem, activeTable: string, index: number): string 
       return `glucose-${(item as GlucoseLogData).patient_id || 'unknown'}-${(item as GlucoseLogData).glucose_log_id || index}`;
     case 'bp-log':
       return `bp-${(item as BpLog).patient_id || 'unknown'}-${(item as BpLog).bplog_id || index}`;
-    case 'patient-diagnosis':
+    case 'diagnosis':
       return `diagnosis-${(item as PatientDiagnosisData).patient_diagnosis_id || index}`;
-    case 'patient-lifestyle':
+    case 'lifestyle':
       return `lifestyle-${(item as PatientLifestyleData).patient_lifestyle_id || index}`;
-    case 'patient-medical-compliance':
+    case 'compliance':
       return `compliance-${(item as PatientMedicalComplianceData).patient_medical_compliance_id || index}`;
-    case 'patient-visit':
+    case 'visit':
       return `visit-${(item as PatientVisit).patient_visit_id || index}`;
-    case 'patient-medical-review':
+    case 'review':
       return `review-${(item as PatientMedicalReview).patient_medical_review_id || index}`;
     case 'screening':
       return `screening-${(item as Screening).screening_id || index}`;
@@ -72,15 +72,15 @@ export const TableView = ({ activeTable, currentItems, columns }: TableViewProps
         return <GlucoseLogTableRow log={item as GlucoseLogData} />;
       case 'bp-log':
         return <BpLogTableRow log={item as BpLog} />;
-      case 'patient-diagnosis':
+      case 'diagnosis':
         return <PatientDiagnosisTableRow diagnosis={item as PatientDiagnosisData} />;
-      case 'patient-lifestyle':
+      case 'lifestyle':
         return <PatientLifestyleTableRow lifestyle={item as PatientLifestyleData} />;
-      case 'patient-medical-compliance':
+      case 'compliance':
         return <PatientMedicalComplianceTableRow compliance={item as PatientMedicalComplianceData} />;
-      case 'patient-visit':
+      case 'visit':
         return <PatientVisitTableRow visit={item as PatientVisit} />;
-      case 'patient-medical-review':
+      case 'review':
         return <PatientMedicalReviewTableRow review={item as PatientMedicalReview} />;
       case 'screening':
         return <ScreeningTableRow screening={item as Screening} />;
