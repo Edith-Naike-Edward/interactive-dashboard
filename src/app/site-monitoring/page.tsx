@@ -68,6 +68,11 @@ type Alert = {
   acknowledged: boolean;
 };
 
+type HistoricalCount = {
+  count: number;
+  timestamp: string;
+};
+
 type ActivityDeclineData = {
   current: {
     sites: number;
@@ -77,41 +82,15 @@ type ActivityDeclineData = {
     sites: number;
     users: number;
   };
+  sites_percentage_change: number;
+  users_percentage_change: number;
   site_activity_declined_5_percent: boolean;
   user_activity_declined_5_percent: boolean;
   historical_data: {
-    sites: Array<{
-      date: string;
-      count: number;
-    }>;
-    users: Array<{
-      date: string;
-      count: number;
-    }>;
+    sites: HistoricalCount[];
+    users: HistoricalCount[];
   };
-};
-
-const generateMockAlerts = (sites: SiteData[]): Alert[] => {
-  const alertTypes = [
-    'Site Inactive', 
-    'User Activity Drop', 
-    'Data Sync Failure', 
-    'Connectivity Issue', 
-    'Resource Shortage'
-  ];
-  
-  return sites
-    .filter(site => !site.is_active || Math.random() > 0.7)
-    .map((site, i) => ({
-      id: `A${i + 1000}`,
-      siteId: site.site_id,
-      siteName: site.name,
-      type: alertTypes[Math.floor(Math.random() * alertTypes.length)],
-      message: `Site ${site.name} requires attention`,
-      severity: !site.is_active ? 'high' : Math.random() > 0.5 ? 'medium' : 'low',
-      timestamp: new Date().toISOString(),
-      acknowledged: false
-    }));
+  last_updated: string;
 };
 
 // Main Dashboard Component
@@ -121,29 +100,18 @@ export default function SiteMonitoringDashboard() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [showAlertPanel, setShowAlertPanel] = useState(false);
-  const [isSimulating, setIsSimulating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [simulationInterval, setSimulationIntervalState] = useState<NodeJS.Timeout | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-//   const [activityDecline, setActivityDecline] = useState<ActivityDeclineData | null>(null);
   const [activityDecline, setActivityDecline] = useState<ActivityDeclineData>({
-    // active_sites: 0,
-    // active_users: 0,
-    current: {
-      sites: 0,
-      users: 0
-    },
-    previous: {
-      sites: 0,
-      users: 0
-    },
+    current: { sites: 0, users: 0 },
+    previous: { sites: 0, users: 0 },
+    sites_percentage_change: 0,
+    users_percentage_change: 0,
     site_activity_declined_5_percent: false,
     user_activity_declined_5_percent: false,
-    historical_data: {
-      sites: [],
-      users: []
-    }
+    historical_data: { sites: [], users: [] },
+    last_updated: ''
   });
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; 
@@ -191,115 +159,224 @@ export default function SiteMonitoringDashboard() {
     );
   };
 
-    // Load sites data
     useEffect(() => {
-        const loadSites = async () => {
-          try {
-            const response = await fetch('http://localhost:8000/api/sites');
-            if (!response.ok) throw new Error('Failed to load sites');
-            const data = await response.json();
-            setSites(data);
-          } catch (error) {
-            console.error('Error loading sites:', error);
-            setError('Failed to load health facilities. Please refresh the page.');
-          }
-        };
-    
-        // Load users data
-        const loadUsers = async () => {
-          try {
-            const response = await fetch('http://localhost:8000/api/users');
-            if (!response.ok) throw new Error('Failed to load users');
-            const data = await response.json();
-            setUsers(data);
-          } catch (error) {
-            console.error('Error loading users:', error);
-            setError('Failed to load users. Please refresh the page.');
-          } finally {
-            setIsLoading(false);
-          }
-        };
+      const fetchData = async () => {
+        try {
+          const [sitesRes, usersRes, activityRes] = await Promise.all([
+            fetch('http://localhost:8010/api/sites'),
+            fetch('http://localhost:8010/api/users'),
+            fetch('http://localhost:8010/api/check-activity-decline')
+          ]);
 
-        // Load activity decline data
-        const activityResponse = async () => {
-            try{
-                const response = await fetch('http://localhost:8000/api/check-activity-decline');
-                if (!response.ok) throw new Error('Failed to load activity decline data');
-                const data = await response.json();
-                setActivityDecline(data);
-            }  catch (error) {
-                console.error('Error loading activity decline data:', error);
-                setError('Failed to load activity decline data. Please refresh the page.');
-            } finally { 
-                setIsLoading(false);
-            }
-        };
-    
-        loadSites();
-        loadUsers();
-        activityResponse();
-      }, []);
+          if (!sitesRes.ok || !usersRes.ok || !activityRes.ok) {
+            throw new Error('Failed to fetch all data');
+          }
 
-      // Periodically check for activity decline
-    useEffect(() => {
-        const interval = setInterval(async () => {
-            try {
-                const response = await fetch('http://localhost:8000/api/check-activity-decline');
-                if (response.ok) {
-                    const data = await response.json();
-                    setActivityDecline(data);
-                
-                // Add alert if there's a significant decline
-                if (data.site_activity_declined_5_percent) {
-                    setAlerts(prev => [...prev, {
-                    id: `DECLINE-${Date.now()}`,
-                    siteId: 0,
-                    siteName: 'System',
-                    type: 'Activity Decline',
-                    message: `Site activity has declined by 5% or more`,
-                    severity: 'medium',
-                    timestamp: new Date().toISOString(),
-                    acknowledged: false
-                    }]);
-                }
-                
-                if (data.user_activity_declined_5_percent) {
-                    setAlerts(prev => [...prev, {
-                    id: `DECLINE-${Date.now() + 1}`,
-                    siteId: 0,
-                    siteName: 'System',
-                    type: 'Activity Decline',
-                    message: `User activity has declined by 5% or more`,
-                    severity: 'medium',
-                    timestamp: new Date().toISOString(),
-                    acknowledged: false
-                    }]);
-                }
-                }
-            } catch (error) {
-                console.error('Error checking activity decline:', error);
-            }
-            }, 30000); // Check every 30 seconds
-            return () => clearInterval(interval);
-  }, []);
-        
-      // Generate alerts based on site/user status
-      useEffect(() => {
-        if (sites.length > 0) {
-          const inactiveSites = sites.filter(site => !site.is_active);
-          const newAlerts = inactiveSites.map((site, i) => ({
-            id: `A${i + 1000}`,
-            siteId: site.site_id,
-            siteName: site.name,
-            type: 'Site Inactive',
-            message: `Site ${site.name} is inactive`,
-            severity: 'high'as const, // Explicitly type this as 'high'
-            timestamp: new Date().toISOString(),
-            acknowledged: false
-          }));
-          setAlerts(newAlerts);
+          const [sitesData, usersData, activityData] = await Promise.all([
+            sitesRes.json(),
+            usersRes.json(),
+            activityRes.json()
+          ]);
+
+          setSites(sitesData);
+          setUsers(usersData);
+
+          const processedActivity: ActivityDeclineData = {
+            current: activityData.data.current,
+            previous: activityData.data.previous,
+            sites_percentage_change: activityData.data.sites_percentage_change,
+            users_percentage_change: activityData.data.users_percentage_change,
+            site_activity_declined_5_percent: activityData.data.site_activity_declined_5_percent,
+            user_activity_declined_5_percent: activityData.data.user_activity_declined_5_percent,
+            historical_data: activityData.data.historical_data,
+            last_updated: activityData.data.last_checked
+          };
+
+          setActivityDecline(processedActivity);
+          generateActivityAlerts(processedActivity);
+        } catch (err) {
+          console.error(err);
+          setError('Failed to load data. Please refresh.');
+        } finally {
+          setIsLoading(false);
         }
-      }, [sites]);
+      };
+
+      fetchData();
+    }, []);
+
+    // Update your activityResponse function
+    const activityResponse = async () => {
+      try {
+        const response = await fetch('http://localhost:8010/api/check-activity-decline');
+        if (!response.ok) throw new Error('Failed to load activity decline data');
+        const data = await response.json();
+        
+        // Process the data with proper typing
+        const processedData: ActivityDeclineData = {
+          current: {
+            sites: data.current?.sites || 0,
+            users: data.current?.users || 0
+          },
+          previous: {
+            sites: data.previous?.sites || 0,
+            users: data.previous?.users || 0
+          },
+          sites_percentage_change: data.sites_percentage_change || 0,
+          users_percentage_change: data.users_percentage_change || 0,
+          site_activity_declined_5_percent: data.site_activity_declined_5_percent || false,
+          user_activity_declined_5_percent: data.user_activity_declined_5_percent || false,
+          historical_data: { 
+            sites: (data.historical_data?.sites as HistoricalCount[])?.map((item: HistoricalCount) => ({
+              timestamp: item.timestamp || new Date().toISOString(),
+              count: item.count || 0
+            })) || [],
+            users: (data.historical_data?.users as HistoricalCount[])?.map((item: HistoricalCount) => ({
+              timestamp: item.timestamp || new Date().toISOString(),
+              count: item.count || 0
+            })) || []
+          },
+          last_updated: data.last_checked || new Date().toISOString()
+        };
+        
+        setActivityDecline(processedData);
+        
+        // Generate alerts based on the new data
+        generateActivityAlerts(processedData);
+        
+      } catch (error) {
+        console.error('Error loading activity decline data:', error);
+        setError('Failed to load activity decline data. Please refresh the page.');
+      } finally { 
+        setIsLoading(false);
+      }
+    };
+        useEffect(() => {
+          const inactive = sites.filter(site => !site.is_active);
+          if (inactive.length > 0) {
+            const alerts = inactive.map((site, i) => ({
+              id: `A${i + 1000}`,
+              siteId: site.site_id,
+              siteName: site.name,
+              type: 'Site Inactive',
+              message: `Site ${site.name} is inactive`,
+              severity: 'high' as const,
+              timestamp: new Date().toISOString(),
+              acknowledged: false
+            }));
+            setAlerts(prev => [...prev, ...alerts]);
+          }
+        }, [sites]);
+            // New function to generate activity alerts
+            const generateActivityAlerts = (data: ActivityDeclineData) => {
+              const newAlerts: Alert[] = [];
+              
+              // Site activity alerts
+              if (data.site_activity_declined_5_percent) {
+                newAlerts.push({
+                  id: `SITE-DECLINE-${Date.now()}`,
+                  siteId: 0,
+                  siteName: 'System',
+                  type: 'Site Activity Decline',
+                  message: `Site activity declined by ${Math.abs(data.sites_percentage_change)}%`,
+                  severity: data.sites_percentage_change <= -10 ? 'high' : 'medium',
+                  timestamp: new Date().toISOString(),
+                  acknowledged: false
+                });
+              }
+              
+              // User activity alerts
+              if (data.user_activity_declined_5_percent) {
+                newAlerts.push({
+                  id: `USER-DECLINE-${Date.now()}`,
+                  siteId: 0,
+                  siteName: 'System',
+                  type: 'User Activity Decline',
+                  message: `User activity declined by ${Math.abs(data.users_percentage_change)}%`,
+                  severity: data.users_percentage_change <= -10 ? 'high' : 'medium',
+                  timestamp: new Date().toISOString(),
+                  acknowledged: false
+                });
+              }
+              
+              // Low value alerts
+              if (data.current.sites < 10) {  // Threshold for low sites
+                newAlerts.push({
+                  id: `LOW-SITES-${Date.now()}`,
+                  siteId: 0,
+                  siteName: 'System',
+                  type: 'Low Site Count',
+                  message: `Low site count detected: ${data.current.sites} active sites`,
+                  severity: 'high',
+                  timestamp: new Date().toISOString(),
+                  acknowledged: false
+                });
+              }
+              
+              if (data.current.users < 30) {  // Threshold for low users
+                newAlerts.push({
+                  id: `LOW-USERS-${Date.now()}`,
+                  siteId: 0,
+                  siteName: 'System',
+                  type: 'Low User Count',
+                  message: `Low user count detected: ${data.current.users} active users`,
+                  severity: 'high',
+                  timestamp: new Date().toISOString(),
+                  acknowledged: false
+                });
+              }
+              
+              if (newAlerts.length > 0) {
+                setAlerts(prev => [...prev, ...newAlerts]);
+              }
+            };
+
+          // Periodically check for activity decline
+          // Update your periodic check useEffect
+      useEffect(() => {
+        const interval = setInterval(async () => {
+          try {
+            const response = await fetch('http://localhost:8010/api/check-activity-decline');
+            if (response.ok) {
+              const data = await response.json();
+              const processedData: ActivityDeclineData = {
+                current: data.data.current,
+                previous: data.data.previous,
+                sites_percentage_change: data.data.sites_percentage_change,
+                users_percentage_change: data.data.users_percentage_change,
+                site_activity_declined_5_percent: data.data.site_activity_declined_5_percent,
+                user_activity_declined_5_percent: data.data.user_activity_declined_5_percent,
+                historical_data: data.data.historical_data,
+                last_updated: data.data.last_checked
+              };
+              setActivityDecline(processedData);
+              generateActivityAlerts(processedData);
+            }
+          } catch (error) {
+            console.error('Error checking activity decline:', error);
+          }
+        }, 30000); // Check every 30 seconds
+        
+        return () => clearInterval(interval);
+      }, []);
+            
+          // Generate alerts based on site/user status
+          useEffect(() => {
+            if (sites.length > 0) {
+              const inactiveSites = sites.filter(site => !site.is_active);
+              const newAlerts = inactiveSites.map((site, i) => ({
+                id: `A${i + 1000}`,
+                siteId: site.site_id,
+                siteName: site.name,
+                type: 'Site Inactive',
+                message: `Site ${site.name} is inactive`,
+                severity: 'high'as const, // Explicitly type this as 'high'
+                timestamp: new Date().toISOString(),
+                acknowledged: false
+              }));
+              setAlerts(newAlerts);
+            }
+          }, [sites]);
 
   // Acknowledge alert
   const acknowledgeAlert = (alertId: string) => {
@@ -469,39 +546,77 @@ export default function SiteMonitoringDashboard() {
 
           {/* Stats Cards */}
           <div className="bg-padua-lightest grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+            {/* Site Activity Card */}
             <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2]">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Total Sites</h3>
-                <Building className="h-6 w-6 text-padua-darkest" />
+                <h3 className="text-lg font-medium">Site Activity</h3>
+                <Activity className="h-6 w-6 text-persian-blue" />
               </div>
-              <p className="text-3xl font-bold">{sites.length}</p>
-              <p className="text-sm text-indigo mt-2">Health facilities monitored</p>
+              <div className="flex items-end gap-4">
+                <p className={`text-3xl font-bold ${
+                  activityDecline.sites_percentage_change < 0 
+                    ? 'text-red-500' 
+                    : 'text-green-500'
+                }`}>
+                  {activityDecline.sites_percentage_change >= 0 ? '+' : ''}
+                  {activityDecline.sites_percentage_change.toFixed(2)}%
+                </p>
+                <div className="flex flex-col">
+                  <span className="text-sm text-gray-500">Previous</span>
+                  <span className="text-xl font-semibold">{activityDecline.previous.sites}</span>
+                </div>
+              </div>
+              <p className="text-sm text-indigo mt-2">
+                {activityDecline.site_activity_declined_5_percent
+                  ? 'Significant drop detected'
+                  : 'Within normal range'}
+              </p>
             </div>
-            
+
+            {/* User Activity Card */}
+            <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2]">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">User Activity</h3>
+                <Users className="h-6 w-6 text-tacao" />
+              </div>
+              <div className="flex items-end gap-4">
+                <p className={`text-3xl font-bold ${
+                  activityDecline.users_percentage_change < 0 
+                    ? 'text-red-500' 
+                    : 'text-green-500'
+                }`}>
+                  {activityDecline.users_percentage_change >= 0 ? '+' : ''}
+                  {activityDecline.users_percentage_change}%
+                </p>
+                <div className="flex flex-col">
+                  <span className="text-sm text-gray-500">Previous</span>
+                  <span className="text-xl font-semibold">{activityDecline.previous.users}</span>
+                </div>
+              </div>
+              <p className="text-sm text-indigo mt-2">
+                {activityDecline.user_activity_declined_5_percent
+                  ? 'Significant drop detected'
+                  : 'Within normal range'}
+              </p>
+            </div>
+
+            {/* Active Sites Card */}
             <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2]">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium">Active Sites</h3>
-                <Activity className="h-6 w-6 text-persian-blue" />
+                <Building className="h-6 w-6 text-padua-darkest" />
               </div>
-              <p className="text-3xl font-bold">{activeSites}</p>
+              <p className="text-3xl font-bold">{activityDecline.current.sites}</p>
               <p className="text-sm text-indigo mt-2">Currently operational</p>
             </div>
 
-            <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2]">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium">Total Users</h3>
-                <Users className="h-6 w-6 text-tacao" />
-              </div>
-              <p className="text-3xl font-bold">{users.length}</p>
-              <p className="text-sm text-indigo mt-2">Registered users</p>
-            </div>
-            
+            {/* Active Users Card */}
             <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2]">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium">Active Users</h3>
                 <User className="h-6 w-6 text-bizarre-darkest" />
               </div>
-              <p className="text-3xl font-bold">{activeUsers}</p>
+              <p className="text-3xl font-bold">{activityDecline.current.users}</p>
               <p className="text-sm text-indigo mt-2">Currently active</p>
             </div>
           </div>
@@ -738,7 +853,7 @@ export default function SiteMonitoringDashboard() {
                 <div>
                     <p className="text-sm font-bold text-indigo">Site Activity Decline</p>
                     <p className={`text-lg font-semibold ${activityDecline.site_activity_declined_5_percent ? 'text-red-600' : 'text-green-600'}`}>
-                      {activityDecline.site_activity_declined_5_percent ? '↓ More than 5%' : 'No Significant Decline'}
+                      {activityDecline.sites_percentage_change}%
                     </p>
                     <p className="text-xs text-indigo">
                       Previous: {activityDecline.previous.sites} → Current: {activityDecline.current.sites}
@@ -751,7 +866,7 @@ export default function SiteMonitoringDashboard() {
                   <div>
                     <p className="text-sm font-bold text-indigo">User Activity Decline</p>
                     <p className={`text-lg font-semibold ${activityDecline.user_activity_declined_5_percent ? 'text-red-600' : 'text-green-600'}`}>
-                      {activityDecline.user_activity_declined_5_percent ? '↓ More than 5%' : 'No Significant Decline'}
+                      {activityDecline.users_percentage_change}%
                     </p>
                     <p className="text-xs text-indigo">
                       Previous: {activityDecline.previous.users} → Current: {activityDecline.current.users}
@@ -851,84 +966,124 @@ export default function SiteMonitoringDashboard() {
                 </div>
               </div>
           
-              <div className="flex justify-center items-center h-64 bg-indigo-lightest border-2 border-dashed border-indigo rounded-lg">
-                <div className="text-center">
-                  <p className="text-sm font-build text-indigo">Site and user activity trends (Last 30 Days)</p>
-                  <div className="mt-6 p-4 bg-white rounded-lg shadow">
-                  <div className="h-40 w-200">
-                  <Line 
-                      data={{
-                        labels: [
-                          ...(activityDecline.historical_data?.sites?.map((item) => item.date) || []),
-                          'Previous',
-                          'Current'
-                        ],
-                        datasets: [
-                          {
-                            label: 'Active Sites',
-                            data: [
-                              ...(activityDecline.historical_data?.sites?.map((item) => item.count) || []),
-                              activityDecline.previous.sites,
-                              activityDecline.current.sites
-                            ],
-                            borderColor: '#4CAF50',
-                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                            tension: 0.3,
-                            borderWidth: 2
-                          },
-                          {
-                            label: 'Active Users',
-                            data: [
-                              ...(activityDecline.historical_data?.users?.map((item) => item.count) || []),
-                              activityDecline.previous.users,
-                              activityDecline.current.users
-                            ],
-                            borderColor: '#2196F3',
-                            backgroundColor: 'rgba(33, 150, 243, 0.1)',
-                            tension: 0.3,
-                            borderWidth: 2
-                          }
-                        ]
-                      }}
-                      options={{
-                        responsive: true,
-                        plugins: {
-                          legend: {
-                            position: 'top',
-                          },
-                          tooltip: {
-                            callbacks: {
-                              label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                  label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                  label += context.parsed.y;
-                                }
-                                
-                                // Add special labels for current/previous points
-                                const totalPoints = context.chart.data.labels?.length || 0;
-                                if (context.dataIndex === totalPoints - 2) {
-                                  label += ' (Previous)';
-                                } else if (context.dataIndex === totalPoints - 1) {
-                                  label += ' (Current)';
-                                }
-                                
-                                return label;
-                              }
+              <div className="flex justify-center items-center h-[32rem] bg-indigo-lightest border-2 border-dashed border-indigo rounded-lg p-4">
+                <div className="w-full h-full flex flex-col">
+                  <p className="text-sm font-build text-indigo mb-2">Site and user activity trends (Last 30 Days)</p>
+                  <div className="flex-1 bg-white rounded-lg shadow p-4">
+                    <div className="w-full h-full">
+                      <Line 
+                        data={{
+                          labels: activityDecline.historical_data?.sites?.map(item => {
+                            const date = new Date(item.timestamp);
+                            return isNaN(date.getTime()) ? '' : date.toLocaleString();
+                          }),
+                          datasets: [
+                            {
+                              label: 'Active Sites',
+                              data: activityDecline.historical_data?.sites?.map(item => item.count || 0),
+                              borderColor: '#4CAF50',
+                              backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                              tension: 0.3,
+                              borderWidth: 2,
+                              pointRadius: 3,
+                              pointHoverRadius: 5
+                            },
+                            {
+                              label: 'Active Users',
+                              data: activityDecline.historical_data?.users?.map(item => item.count || 0),
+                              borderColor: '#2196F3',
+                              backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                              tension: 0.3,
+                              borderWidth: 2,
+                              pointRadius: 3,
+                              pointHoverRadius: 5
+                            }
+                          ]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          layout: {
+                            padding: {
+                              top: 10,
+                              bottom: 15,
+                              left: 15,
+                              right: 15
                             }
                           },
-                        },
-                        scales: {
-                          y: {
-                            beginAtZero: false
+                          plugins: {
+                            legend: {
+                              position: 'top',
+                              labels: {
+                                padding: 15,
+                                boxWidth: 12,
+                                font: {
+                                  size: 12
+                                }
+                              }
+                            },
+                            tooltip: {
+                              callbacks: {
+                                label: function(context) {
+                                  return `${context.dataset.label}: ${context.parsed.y}`;
+                                },
+                                title: function(context) {
+                                  const timestamp = activityDecline.historical_data?.sites[context[0].dataIndex]?.timestamp;
+                                  const date = new Date(timestamp);
+                                  return isNaN(date.getTime()) ? 'Unknown Date' : date.toLocaleString();
+                                }
+                              }
+                            },
+                          },
+                          scales: {
+                            x: {
+                              title: {
+                                display: true,
+                                text: 'Date & Time',
+                                padding: {top: 5, bottom: 5},
+                                font: {
+                                  size: 12
+                                }
+                              },
+                              ticks: {
+                                maxRotation: 45,
+                                minRotation: 45,
+                                padding: 5,
+                                autoSkip: true,
+                                maxTicksLimit: 10,
+                                callback: function(value, index) {
+                                  const timestamp = activityDecline.historical_data?.sites[index]?.timestamp;
+                                  const date = new Date(timestamp);
+                                  if (isNaN(date.getTime())) return '';
+                                  return index % Math.ceil((activityDecline.historical_data?.sites.length || 0) / 7) === 0 
+                                    ? date.toLocaleDateString() 
+                                    : '';
+                                }
+                              },
+                              grid: {
+                                display: false
+                              }
+                            },
+                            y: {
+                              title: {
+                                display: true,
+                                text: 'Active Count',
+                                padding: {bottom: 10},
+                                font: {
+                                  size: 12
+                                }
+                              },
+                              ticks: {
+                                padding: 8
+                              },
+                              beginAtZero: false,
+                              grace: '5%' // Adds 5% padding at top
+                            }
                           }
-                        }
-                      }}
-                    />
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
                 </div>
               </div>
             </div>

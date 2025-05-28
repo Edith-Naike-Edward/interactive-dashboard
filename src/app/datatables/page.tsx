@@ -277,7 +277,7 @@ export default function DataTables() {
     switch (key) {
       case 'riskLevel':
         if (!value) return true;
-        return item.riskLevel?.toLowerCase() === value.toLowerCase();
+        return item.risk_level?.toLowerCase() === value.toLowerCase();
       
       case 'startDate':
         if (!value || !item.date) return true;
@@ -334,7 +334,7 @@ export default function DataTables() {
 
   const filterLifestyleTable = (item: any, key: string, value: string): boolean => {
     switch (key) {
-      case 'lifestyle':
+      case 'lifestyle-name':
         if (!value) return true;
         return item.lifestyleName?.toLowerCase().includes(value.toLowerCase());
       

@@ -12,8 +12,11 @@ interface FilterState {
   phq4_score?: string;
   cvd_risk_score?: string;
   cvd_risk_level?: string;
+  risk_level?: string;
   // New filter fields
   diagnosisType?: string;
+  answerOptions?: string;
+  lifestyle_name?: string;
   lifestyleType?: string;
   complianceType?: string;
   visitType?: string;
@@ -60,7 +63,7 @@ const countyOptions = [
   { label: 'Kilifi', value: 'Kilifi' }
 ];
 
-const riskLevels = [
+const risk_level = [
   { label: 'All', value: '' },
   { label: 'Low', value: 'Low' },
   { label: 'Medium', value: 'Medium' },
@@ -96,6 +99,17 @@ const visitTypes = [
   { label: 'Medical Review', value: 'medical_review' }
 ];
 
+const answerOptions = [
+  { label: 'All Answers', value: '' },
+  { label: 'Following as recommended', value: 'Following as recommended' },
+  { label: 'Partially following', value: 'Partially following' },
+  { label: 'Not following', value: 'Not following' },
+  { label: 'Needs improvement', value: 'Needs improvement' },
+  { label: 'Exceeding recommendations', value: 'Exceeding recommendations' },
+  { label: 'Recently started', value: 'Recently started' },
+  { label: 'Consistently maintained', value: 'Consistently maintained' }
+];
+    
 const yesNoOptions = [
   { label: 'All', value: '' },
   { label: 'Yes', value: 'true' },
@@ -189,7 +203,6 @@ export function FilterPanel({ activeTable, onApply }: FilterPanelProps) {
         { label: 'Mombasa', value: 'Mombasa' },
         { label: 'Kilifi', value: 'Kilifi' }
       ], 'county')}
-      {/* {renderInput('county', 'County', filters.county, 'Enter county', 'county')} */}
       {renderSelect('gender', 'Gender', filters.gender, [
         { label: 'All Genders', value: '' },
         { label: 'Male', value: 'M' },
@@ -200,7 +213,7 @@ export function FilterPanel({ activeTable, onApply }: FilterPanelProps) {
 
   const renderBpLogFilters = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {renderSelect('risk-level', 'Risk Level', filters.riskLevel, riskLevels, 'riskLevel')}
+      {renderSelect('riskLevel', 'Risk Level', filters.risk_level, risk_level, 'risk_level')}
       {renderDateRange()}
     </div>
   );
@@ -226,8 +239,8 @@ export function FilterPanel({ activeTable, onApply }: FilterPanelProps) {
 
   const renderLifestyleFilters = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {renderSelect('lifestyle-type', 'Lifestyle Type', filters.lifestyleType, lifestyleTypes, 'lifestyleType')}
-      {renderInput('lifestyle-answer', 'Answer Contains', filters.complaintSearch, 'Search answers', 'complaintSearch')}
+      {renderSelect('lifestyle-name', 'Lifestyle Name', filters.lifestyle_name, lifestyleTypes, 'lifestyleType')}
+      {renderInput('lifestyle-answer', 'Answer Contains', filters.answerOptions, 'Search answers', 'answerOptions')}
       {renderInput('lifestyle-comments', 'Comments Contains', filters.clinicalNoteSearch, 'Search comments', 'clinicalNoteSearch')}
     </div>
   );
