@@ -36,6 +36,7 @@ import {
   Building,
   PieChart as PieChartIcon
 } from 'lucide-react';
+import { getPreviouslyCachedImageOrNull } from 'next/dist/server/image-optimizer';
 
 // Register ChartJS components
 ChartJS.register(ArcElement, Tooltip, Legend, LinearScale, CategoryScale, BarElement, PointElement, annotationPlugin, LineElement, Title);
@@ -109,25 +110,18 @@ type FollowUpData = {
 };
 
 type MetricsData = {
-  current: {
-    new_diagnoses: number;
-    bp_followup: number;
-    bg_followup: number;
-    bp_controlled: number;
+  current_metrics: {
+    percent_new_diagnoses: number;
+    percent_bp_followup: number;
+    percent_bg_followup: number;
+    percent_bp_controlled: number;
     timestamp: string;
-  };
-  previous: {
-    new_diagnoses: number;
-    bp_followup: number;
-    bg_followup: number;
-    bp_controlled: number;
-    timestamp: string;
-  };
-  percent_changes: {
-    new_diagnoses: number;
-    bp_followup: number;
-    bg_followup: number;
-    bp_controlled: number;
+    changes: {
+      new_diagnoses: number;
+      bp_followup: number;
+      bg_followup: number;
+      bp_controlled: number;
+    };
   };
   historical_data: Array<{
     timestamp: string;
@@ -135,7 +129,13 @@ type MetricsData = {
     percent_bg_followup: number;
     percent_new_diagnoses: number;
     percent_bp_controlled: number;
-    performance_declined?: boolean; 
+    performance_declined?: boolean;
+    changes?: {
+      new_diagnoses: number;
+      bp_followup: number;
+      bg_followup: number;
+      bp_controlled: number;
+    };
   }>;
   last_checked: string;
   performance_declined: boolean;
@@ -147,6 +147,31 @@ type MetricsData = {
   };
 };
 
+// Add default values for metrics
+const defaultMetrics: MetricsData = {
+  current_metrics: {
+    percent_new_diagnoses: 0,
+    percent_bp_followup: 0,
+    percent_bg_followup: 0,
+    percent_bp_controlled: 0,
+    timestamp: new Date().toISOString(),
+    changes: {
+      new_diagnoses: 0,
+      bp_followup: 0,
+      bg_followup: 0,
+      bp_controlled: 0
+    }
+  },
+  historical_data: [],
+  last_checked: new Date().toISOString(),
+  performance_declined: false,
+  threshold_violations: {
+    new_diagnoses: false,
+    bp_followup: false,
+    bg_followup: false,
+    bp_controlled: false
+  }
+};
 
 export default function FollowUpPage() {
   const [activeTab, setActiveTab] = useState('bp');
@@ -319,48 +344,49 @@ const PaginationControls = ({
     return <span className="text-gray-500">0%</span>;
   };
 
-  const historicalData = Array.isArray(metrics?.historical_data) ? metrics.historical_data : [];
+const historicalData = Array.isArray(metrics?.historical_data) ? metrics.historical_data : [];
 
-  const historicalChartData = {
-    labels: metrics?.historical_data.map(item => {
-      const date = new Date(item.timestamp);
-      return isNaN(date.getTime()) ? 'Invalid Date' : 
-        date.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric'
-        });
-    }) || [],
-    datasets: [
-      {
-        label: 'BP Follow-up Rate',
-        data: metrics?.historical_data.map(item => item.percent_bp_followup) || [],
-        borderColor: '#675BD2',
-        backgroundColor: 'rgba(103, 91, 210, 0.1)',
-        tension: 0.4
-      },
-      {
-        label: 'BG Follow-up Rate',
-        data: metrics?.historical_data.map(item => item.percent_bg_followup) || [],
-        borderColor: '#4CAF50',
-        backgroundColor: 'rgba(76, 175, 80, 0.1)',
-        tension: 0.4
-      },
-      {
-        label: 'New Diagnoses',
-        data: metrics?.historical_data.map(item => item.percent_new_diagnoses) || [],
-        borderColor: '#FF9800',
-        backgroundColor: 'rgba(255, 152, 0, 0.1)',
-        tension: 0.4
-      },
-      {
-        label: 'BP Controlled Rate',
-        data: metrics?.historical_data.map(item => item.percent_bp_controlled) || [],
-        borderColor: '#F44336',
-        backgroundColor: 'rgba(244, 67, 54, 0.1)',
-        tension: 0.4
-      }
-    ]
-  };
+const historicalChartData = {
+  labels: historicalData.map(item => {
+    const date = new Date(item.timestamp);
+    return isNaN(date.getTime()) ? 'Invalid Date' :
+      date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      });
+  }),
+  datasets: [
+    {
+      label: 'BP Follow-up Rate',
+      data: historicalData.map(item => item.percent_bp_followup),
+      borderColor: '#675BD2',
+      backgroundColor: 'rgba(103, 91, 210, 0.1)',
+      tension: 0.4
+    },
+    {
+      label: 'BG Follow-up Rate',
+      data: historicalData.map(item => item.percent_bg_followup),
+      borderColor: '#4CAF50',
+      backgroundColor: 'rgba(76, 175, 80, 0.1)',
+      tension: 0.4
+    },
+    {
+      label: 'New Diagnoses',
+      data: historicalData.map(item => item.percent_new_diagnoses),
+      borderColor: '#FF9800',
+      backgroundColor: 'rgba(255, 152, 0, 0.1)',
+      tension: 0.4
+    },
+    {
+      label: 'BP Controlled Rate',
+      data: historicalData.map(item => item.percent_bp_controlled),
+      borderColor: '#F44336',
+      backgroundColor: 'rgba(244, 67, 54, 0.1)',
+      tension: 0.4
+    }
+  ]
+};
+
 
   if (isLoading) return (
     <div className="flex items-center justify-center min-h-screen">
@@ -380,6 +406,49 @@ const PaginationControls = ({
     </div>
   );
   
+    const metricsCards = [
+    {
+      label: 'New Diagnoses',
+      icon: WarningAmber,
+      current: metrics.current_metrics.percent_new_diagnoses,
+      previous: metrics.current_metrics.changes?.new_diagnoses ?? 0,
+      change: metrics.current_metrics.changes?.new_diagnoses ?? 0,
+      violated: metrics.threshold_violations?.new_diagnoses ?? false
+    },
+    {
+      label: 'BP Follow-up %',
+      icon: Activity,
+      current: metrics.current_metrics.percent_bp_followup,
+      previous: metrics.current_metrics.changes?.bp_followup ?? 0,
+      change: metrics.current_metrics.changes?.bp_followup ?? 0,
+      violated: metrics.threshold_violations?.bp_followup ?? false
+      // previous: metrics.current_metrics.changes.bp_followup,
+      // change: metrics.current_metrics.changes.bp_followup,
+      // violated: metrics.threshold_violations.bp_followup
+    },
+    {
+      label: 'BG Follow-up %',
+      icon: Thermometer,
+      current: metrics.current_metrics.percent_bg_followup,
+      previous: metrics.current_metrics.changes?.bg_followup ?? 0,
+      change: metrics.current_metrics.changes?.bg_followup ?? 0,
+      violated: metrics.threshold_violations?.bg_followup ?? false
+      // previous: metrics.current_metrics.changes.bg_followup,
+      // change: metrics.current_metrics.changes.bg_followup,
+      // violated: metrics.threshold_violations.bg_followup
+    },
+    {
+      label: 'BP Controlled %',
+      icon: BarChart3,
+      current: metrics.current_metrics.percent_bp_controlled,
+      previous: metrics.current_metrics.changes?.bp_controlled ?? 0,
+      change: metrics.current_metrics.changes?.bp_controlled ?? 0,
+      violated: metrics.threshold_violations?.bp_controlled ?? false
+      // previous: metrics.current_metrics.changes.bp_controlled,
+      // change: metrics.current_metrics.changes.bp_controlled,
+      // violated: metrics.threshold_violations.bp_controlled
+    }
+  ];
 
   return (
     <>
@@ -476,281 +545,32 @@ const PaginationControls = ({
               </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-              {/* New Diagnoses
-              <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">New Diagnoses</h3>
-                    <WarningAmber className={`h-6 w-6 ${metrics.threshold_violations.new_diagnoses ? 'text-red-500' : 'text-green-500'}`} />
-                  </div>
-                  <p className="text-3xl font-bold">{metrics.current.new_diagnoses}</p>
-                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.new_diagnoses} last period</p>
-                </div>
-                <div className="mt-4">{renderTrendIndicator(metrics.percent_changes.new_diagnoses)}</div>
-              </div>*}
-
-              {/* BP Follow-up */}
-              {/* <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">BP Follow-up</h3>
-                    <Activity className={`h-6 w-6 ${metrics.threshold_violations.bp_followup ? 'text-red-500' : 'text-green-500'}`} />
-                  </div>
-                  <p className="text-3xl font-bold">{metrics.current.bp_followup}%</p>
-                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.bp_followup}% last period</p>
-                </div>
-                <div className="mt-4">{renderTrendIndicator(metrics.percent_changes.bp_followup)}</div>
-              </div>
-
-              {/* BG Follow-up */}
-              {/* <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">BG Follow-up</h3>
-                    <Thermometer className={`h-6 w-6 ${metrics.threshold_violations.bg_followup ? 'text-red-500' : 'text-green-500'}`} />
-                  </div>
-                  <p className="text-3xl font-bold">{metrics.current.bg_followup}%</p>
-                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.bg_followup}% last period</p>
-                </div>
-                <div className="mt-4">{renderTrendIndicator(metrics.percent_changes.bg_followup)}</div>
-              </div> */}
-
-              {/* BP Controlled */}
-              {/* <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">BP Controlled</h3>
-                    <BarChart3 className={`h-6 w-6 ${metrics.threshold_violations.bp_controlled ? 'text-red-500' : 'text-green-500'}`} />
-                  </div>
-                  <p className="text-3xl font-bold">{metrics.current.bp_controlled}%</p>
-                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.bp_controlled}% last period</p>
-                </div>
-                <div className="mt-4">{renderTrendIndicator(metrics.percent_changes.bp_controlled)}</div>
-              </div> */}
-            </div> 
-
+            {/* Metrics Overview */}
               {/* New Diagnoses */}
               <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">New Diagnoses</h3>
-                    <WarningAmber className={`h-6 w-6 ${metrics.threshold_violations.new_diagnoses ? 'text-red-500' : 'text-green-500'}`} />
+                {metricsCards.map((card, index) => (
+                  <div key={index} className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-medium">{card.label}</h3>
+                        <card.icon className={`h-6 w-6 ${card.violated ? 'text-red-500' : 'text-green-500'}`} />
+                      </div>
+                      <p className="text-3xl font-bold">{card.current}{card.label.includes('%') ? '%' : ''}</p>
+                      <p className="text-sm text-indigo mt-2">vs {card.previous}{card.label.includes('%') ? '%' : ''} last period</p>
+                    </div>
+                    <p className={`mt-4 text-sm ${card.change < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                      {card.change < 0 ? `${Math.abs(card.change)}% drop` : `${card.change}% increase`}
+                    </p>
                   </div>
-                  <p className="text-3xl font-bold">{metrics.current.new_diagnoses}</p>
-                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.new_diagnoses} last period</p>
-                </div>
-                <p className={`mt-4 text-sm ${metrics.percent_changes.new_diagnoses < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                  {metrics.percent_changes.new_diagnoses < 0 ? (
-                    `${Math.abs(metrics.percent_changes.new_diagnoses)}% drop`
-                  ) : (
-                    `${metrics.percent_changes.new_diagnoses}% increase`
-                  )}
-                </p>
-              </div>
-
-              {/* BP Follow-up */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">BP Follow-up</h3>
-                    <Activity className={`h-6 w-6 ${metrics.threshold_violations.bp_followup ? 'text-red-500' : 'text-green-500'}`} />
-                  </div>
-                  <p className="text-3xl font-bold">{metrics.current.bp_followup}%</p>
-                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.bp_followup}% last period</p>
-                </div>
-                <p className={`mt-4 text-sm ${metrics.percent_changes.bp_followup < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                  {metrics.percent_changes.bp_followup < 0 ? (
-                    `${Math.abs(metrics.percent_changes.bp_followup)}% drop`
-                  ) : (
-                    `${metrics.percent_changes.bp_followup}% increase`
-                  )}
-                </p>
-              </div>
-
-              {/* BG Follow-up */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">BG Follow-up</h3>
-                    <Thermometer className={`h-6 w-6 ${metrics.threshold_violations.bg_followup ? 'text-red-500' : 'text-green-500'}`} />
-                  </div>
-                  <p className="text-3xl font-bold">{metrics.current.bg_followup}%</p>
-                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.bg_followup}% last period</p>
-                </div>
-                <p className={`mt-4 text-sm ${metrics.percent_changes.bg_followup < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                  {metrics.percent_changes.bg_followup < 0 ? (
-                    `${Math.abs(metrics.percent_changes.bg_followup)}% drop`
-                  ) : (
-                    `${metrics.percent_changes.bg_followup}% increase`
-                  )}
-                </p>
-              </div>
-
-              {/* BP Controlled */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
-                <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium">BP Controlled</h3>
-                    <BarChart3 className={`h-6 w-6 ${metrics.threshold_violations.bp_controlled ? 'text-red-500' : 'text-green-500'}`} />
-                  </div>
-                  <p className="text-3xl font-bold">{metrics.current.bp_controlled}%</p>
-                  <p className="text-sm text-indigo mt-2">vs {metrics.previous.bp_controlled}% last period</p>
-                </div>
-                <p className={`mt-4 text-sm ${metrics.percent_changes.bp_controlled < 0 ? 'text-red-500' : 'text-green-600'}`}>
-                  {metrics.percent_changes.bp_controlled < 0 ? (
-                    `${Math.abs(metrics.percent_changes.bp_controlled)}% drop`
-                  ) : (
-                    `${metrics.percent_changes.bp_controlled}% increase`
-                  )}
-                </p>
+                ))}
             </div>
 
 
             {/* Follow-up Rates Chart */}
             <div className="bg-white rounded-xl p-6 shadow-lg mb-6">
               <h3 className="text-xl font-medium mb-4">Historical Trends</h3>
-              <div className="h-64">
-              <Line
-                data={{
-                  labels: metrics?.historical_data.map(item => {
-                    // Format date as "MMM DD" (e.g., "Jan 15")
-                    return new Date(item.timestamp).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric'
-                    });
-                  }) || [],
-                  datasets: [
-                    {
-                      label: 'BP Follow-up Rate',
-                      data: metrics?.historical_data.map(item => item.percent_bp_followup) || [],
-                      borderColor: '#675BD2',
-                      backgroundColor: 'rgba(103, 91, 210, 0.1)',
-                      tension: 0.3,
-                      fill: true
-                    },
-                    {
-                      label: 'BG Follow-up Rate',
-                      data: metrics?.historical_data.map(item => item.percent_bg_followup) || [],
-                      borderColor: '#4CAF50',
-                      backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                      tension: 0.3,
-                      fill: true
-                    },
-                    {
-                      label: 'New Diagnoses',
-                      data: metrics?.historical_data.map(item => item.percent_new_diagnoses) || [],
-                      borderColor: '#FF9800',
-                      backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                      tension: 0.3,
-                      fill: true
-                    },
-                    {
-                      label: 'BP Controlled Rate',
-                      data: metrics?.historical_data.map(item => item.percent_bp_controlled) || [],
-                      borderColor: '#F44336',
-                      backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                      tension: 0.3,
-                      fill: true
-                    }
-                  ]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'top',
-                      labels: {
-                        usePointStyle: true,
-                        padding: 20
-                      }
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: function(context) {
-                          return `${context.dataset.label}: ${context.raw}%`;
-                        },
-                        title: function(context) {
-                          // Format the full date for tooltip
-                          const dateStr = metrics?.historical_data[context[0].dataIndex].timestamp || '';
-                          return new Date(dateStr).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          });
-                        }
-                      }
-                    }
-                  },
-                  scales: {
-                    x: {
-                      grid: {
-                        display: false
-                      },
-                      ticks: {
-                        maxRotation: 45,
-                        minRotation: 45
-                      }
-                    },
-                    y: {
-                      min: 0,
-                      max: 100,
-                      ticks: {
-                        callback: function(value) {
-                          return `${value}%`;
-                        }
-                      },
-                      // grid: {
-                      //   borderColor: 'transparent',  // Hides the border line
-                      //   borderWidth: 0               // Removes any border around the grid lines
-                      // }
-                    }
-                  },
-                  elements: {
-                    point: {
-                      radius: 3,
-                      hoverRadius: 6
-                    }
-                  }
-                }}
-              />
-              {/* <Line
-                data={historicalChartData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'bottom',
-                    },
-                    tooltip: {
-                      callbacks: {
-                        label: function (context) {
-                          return `${context.dataset.label}: ${context.raw}%`;
-                        }
-                      }
-                    }
-                  },
-                  scales: {
-                    x: {
-                      title: {
-                        display: true,
-                        text: 'Date'
-                      }
-                    },
-                    y: {
-                      beginAtZero: true,
-                      title: {
-                        display: true,
-                        text: 'Percentage (%)'
-                      }
-                    }
-                  }
-                }}
-              /> */}
-              </div>
+              <h2 className="text-lg font-semibold mb-4">Follow-up Performance Trends</h2>
+              <Line data={historicalChartData} options={{ responsive: true, plugins: { legend: { position: 'bottom' } } }} />
             </div>
 
             {/* BP Follow-up Table */}

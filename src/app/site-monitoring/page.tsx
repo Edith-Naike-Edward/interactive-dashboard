@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { AlertsProvider } from '../contexts/AlertsContext';
 import {
   Search,
   Notifications,
@@ -32,6 +33,7 @@ import {
   Building,
   PieChartIcon
 } from 'lucide-react';
+import AlertBell from '../components/AlertBell';
 
 // Register ChartJS components
 ChartJS.register(ArcElement, Tooltip, Legend, LinearScale, CategoryScale, BarElement, PointElement, annotationPlugin, LineElement, Title);
@@ -90,6 +92,16 @@ type ActivityDeclineData = {
     sites: HistoricalCount[];
     users: HistoricalCount[];
   };
+  last_updated: string;
+};
+
+type ActivityData = {
+  current: { sites: number; users: number };
+  previous: { sites: number; users: number };
+  sites_percentage_change: number;
+  users_percentage_change: number;
+  site_activity_declined_5_percent: boolean;
+  user_activity_declined_5_percent: boolean;
   last_updated: string;
 };
 
@@ -204,6 +216,7 @@ export default function SiteMonitoringDashboard() {
 
       fetchData();
     }, []);
+
 
     // Update your activityResponse function
     const activityResponse = async () => {
@@ -330,6 +343,7 @@ export default function SiteMonitoringDashboard() {
                 setAlerts(prev => [...prev, ...newAlerts]);
               }
             };
+      
 
           // Periodically check for activity decline
           // Update your periodic check useEffect
@@ -378,14 +392,15 @@ export default function SiteMonitoringDashboard() {
             }
           }, [sites]);
 
+
   // Acknowledge alert
-  const acknowledgeAlert = (alertId: string) => {
-    setAlerts(prev => 
-      prev.map(alert => 
-        alert.id === alertId ? { ...alert, acknowledged: true } : alert
-      )
-    );
-  };
+  const acknowledgeAlert = (id: string) => {
+      setAlerts(prev => 
+        prev.map(alert => 
+          alert.id === id ? { ...alert, acknowledged: true } : alert
+        )
+      );
+    };
 
   // Filter sites based on search input
   const filteredSites = sites.filter(site => 
@@ -408,7 +423,7 @@ export default function SiteMonitoringDashboard() {
   const alertCount = alerts.filter(a => !a.acknowledged).length;
 
   return (
-    <>
+      <>
     <Head>
         <title>Interactive Health Data Visualization Tool</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -460,17 +475,19 @@ export default function SiteMonitoringDashboard() {
         </a>
         </div>
         <div className="flex items-center space-x-4">
-          <button 
-            className="flex items-center relative" 
-            onClick={() => setShowAlertPanel(!showAlertPanel)}
-          >
-            <Bell className="h-6 w-6" />
-            {alertCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-tacao text-tacao-darkest text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                {alertCount}
-              </span>
-            )}
-          </button>
+            <div
+              role="button"
+              tabIndex={0}
+              aria-label="Show Alerts"
+              title="Show Alerts"
+              onClick={() => setActiveTab('alerts')}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setActiveTab('alerts')}
+              className={`w-full text-left p-2 rounded-md flex items-center cursor-pointer ${
+                activeTab === 'alerts' ? 'bg-persian-blue text-black' : 'hover:bg-persian-blue'
+              }`}
+            >
+                <AlertBell alerts={alerts} onAcknowledge={acknowledgeAlert} setActiveTab={setActiveTab} />
+            </div>
           <button className="flex items-center" aria-label="Settings">
             <Settings className="h-6 w-6" />
           </button>
@@ -513,6 +530,13 @@ export default function SiteMonitoringDashboard() {
               <BarChart3 className="h-5 w-5 mr-2" />
               Analytics
             </button>
+            <button 
+              className={`w-full text-left p-2 rounded-md flex items-center ${activeTab === 'alerts' ? 'bg-persian-blue text-black' : 'hover:bg-persian-blue'}`}
+              onClick={() => setActiveTab('alerts')}
+            >
+              <AlertTriangle className="h-5 w-5 mr-2" />
+              Alerts
+            </button>
           </nav>
           
         </aside>
@@ -526,6 +550,7 @@ export default function SiteMonitoringDashboard() {
               {activeTab === 'sites' && 'Site Management'}
               {activeTab === 'users' && 'User Management'}
               {activeTab === 'analytics' && 'System Analytics'}
+              {activeTab === 'alerts' && 'Alerts'}
             </h2>
             
             <div className="relative">
@@ -699,6 +724,66 @@ export default function SiteMonitoringDashboard() {
 
             </div>
           )}
+      
+          {/* Alerts View */}
+          {activeTab === 'alerts' && (
+            <div className="card rounded-lg shadow-sm overflow-hidden">
+              <div className="p-4 border-b bg-white">
+                <h3 className="text-xl font-medium">Alerts</h3>
+                <p className="text-sm text-indigo">System alerts and notifications</p>
+              </div>
+
+              {alerts.length === 0 ? (
+                <div className="p-4 text-gray-500">No alerts to display</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full whitespace-nowrap">
+                    <thead className="bg-padua-darkest text-white">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Alert</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Site</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Severity</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Time</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {alerts.map((alert) => (
+                        <tr
+                          key={alert.id}
+                          className={`${
+                            alert.acknowledged ? 'bg-gray-100' :
+                            alert.severity === 'high' ? 'bg-red-50' :
+                            alert.severity === 'medium' ? 'bg-yellow-50' : 'bg-blue-50'
+                          } border-b`}
+                        >
+                          <td className="px-4 py-2">{alert.message}</td>
+                          <td className="px-4 py-2">{alert.siteName || 'System'}</td>
+                          <td className="px-4 py-2 capitalize">{alert.severity}</td>
+                          <td className="px-4 py-2 text-sm text-gray-500">
+                            {new Date(alert.timestamp).toLocaleString()}
+                          </td>
+                          <td className="px-4 py-2">
+                            {!alert.acknowledged ? (
+                              <button
+                                onClick={() => acknowledgeAlert(alert.id)}
+                                className="text-sm bg-white px-3 py-1 rounded border hover:bg-gray-50"
+                              >
+                                Acknowledge
+                              </button>
+                            ) : (
+                              <span className="text-xs text-green-600">Acknowledged</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
 
           {/* Sites View */}
           {activeTab === 'sites' && (

@@ -3,6 +3,7 @@
 import Head from 'next/head';
 import { useRouter } from 'next/navigation'; 
 import { useEffect, useState, useRef } from 'react';
+import {AlertsProvider} from './contexts/AlertsContext'; // Adjust the import path as needed
 
 export default function Home() {
   const router = useRouter();
@@ -318,7 +319,8 @@ useEffect(() => {
   }, []);
 
   return (
-    <>
+    <AlertsProvider>
+      <>
       <Head>
         <title>Interactive Health Data Visualization Tool</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -847,5 +849,6 @@ useEffect(() => {
         </div>
       </div>
     </>
+    </AlertsProvider>
   );
 }
