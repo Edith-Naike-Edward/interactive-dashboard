@@ -491,9 +491,13 @@ export default function SiteMonitoringDashboard() {
           <button className="flex items-center" aria-label="Settings">
             <Settings className="h-6 w-6" />
           </button>
-          <button className="flex items-center" aria-label="User Profile">
+            <button
+            className="flex items-center"
+            aria-label="User Profile"
+            onClick={() => window.location.href = '/profile'}
+            >
             <User className="h-6 w-6" />
-          </button>
+            </button>
         </div>
       </nav>
 
@@ -738,7 +742,7 @@ export default function SiteMonitoringDashboard() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full whitespace-nowrap">
-                    <thead className="bg-padua-darkest text-white">
+                    <thead className="bg-padua-darkest text-black">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Alert</th>
                         <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Site</th>

@@ -41,73 +41,94 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    const loadUserProfile = async () => {
-      const token = localStorage.getItem('token');
-      console.log('Loading user profile with token:', token);
-      
-      if (!token) {
-        console.log('No token found, redirecting to login');
-        router.push('/');
-        return;
+  const loadUserProfile = async () => {
+    const token = localStorage.getItem('token');
+    console.log('Loading user profile with token:', token);
+    
+    if (!token) {
+      router.push('/');
+      return;
+    }
+
+    try {
+      // Fetch all users
+      const response = await fetch('http://localhost:8010/api/users', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          router.push('/');
+          return;
+        }
+        throw new Error('Failed to load profile');
       }
 
-      try {
-        // Fetch current user profile from backend
-        const response = await fetch('http://localhost:8010/api/users', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        console.log('User profile fetch response status:', response.status);
+      const allUsers = await response.json();
+      
+      // Decode token to get current user's email
+      const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+      const currentUserEmail = tokenPayload.sub; // 'edith_naike27@students.uonbi.ac.ke'
+      
+      // Find current user in the array
+      const currentUser = allUsers.find((user: UserData) => user.email === currentUserEmail);
+      
+      if (!currentUser) {
+        throw new Error('Current user not found in response');
+      }
 
-        if (!response.ok) {
-          if (response.status === 401) {
-            // Token expired or invalid
-            console.log('Unauthorized: token expired or invalid');
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            router.push('/');
-            return;
-          }
-          throw new Error('Failed to load profile');
-        }
+      console.log('Current user data:', currentUser);
+      setUser(currentUser);
+      setEditForm(currentUser);
+      localStorage.setItem('user', JSON.stringify(currentUser));
+      
+      await loadSites();
 
-        const userData = await response.json();
-        console.log('User data received from API:', userData);
+    // Wait for sites to be loaded (might need state management if loadSites is async)
+    const sitesResponse = await fetch('http://localhost:8010/api/sites', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (!sitesResponse.ok) throw new Error('Failed to load sites');
+    const allSites: Site[] = await sitesResponse.json();
 
-        setUser(userData);
-        setEditForm(userData);
-        
-        // Update localStorage with fresh data
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        // Load sites for editing
-        await loadSites();
-      } catch (error) {
-        console.error('Error loading user profile:', error);
+    // Find matching site and add site_name to user object
+    const userSite = allSites.find(site => site.site_id === currentUser.site_id);
+    const userWithSite = {
+      ...currentUser,
+      site_name: userSite?.name || 'Unknown Site'
+    };
+
+    console.log('User with site data:', userWithSite);
+    setUser(userWithSite);
+    setEditForm(userWithSite);
+    localStorage.setItem('user', JSON.stringify(userWithSite));
+    } catch (error) {
+      console.error('Error loading user profile:', error);
         // Fallback to localStorage data
         const localUserData = localStorage.getItem('user');
         if (localUserData) {
-          try {
+        try {
             const parsedUser = JSON.parse(localUserData);
             console.log('Using localStorage user data:', parsedUser);
             setUser(parsedUser);
             setEditForm(parsedUser);
-            await loadSites();
-          } catch (parseError) {
+        } catch (parseError) {
             console.error('Error parsing localStorage user data:', parseError);
             router.push('/');
-          }
-        } else {
-          router.push('/');
         }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+        } else {
+        router.push('/');
+        }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    loadUserProfile();
-  }, [router]);
+  loadUserProfile();
+}, [router]);
 
   const loadSites = async () => {
     try {
@@ -118,8 +139,16 @@ export default function ProfilePage() {
         }
       });
       if (!response.ok) throw new Error('Failed to load sites');
-      const data = await response.json();
+      const data: Site [] = await response.json();
       setSites(data);
+
+      // If we already have a user, update their site_name
+        if (user) {
+        const userSite = data.find(site => site.site_id === user.site_id);
+        if (userSite) {
+            setUser(prev => prev ? { ...prev, site_name: userSite.name } : null);
+        }
+        }
     } catch (error) {
       console.error('Error loading sites:', error);
     }

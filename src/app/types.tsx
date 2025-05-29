@@ -8,3 +8,16 @@ export type Alert = {
   timestamp: string;
   acknowledged: boolean;
 };
+
+export type AlertType = 'threshold' | 'performance' | 'inactive' | 'activity';
+export type AlertSeverity = 'low' | 'medium' | 'high';
+
+export type AlertFollowup = {
+  id: string;
+  // alertId: string;
+  type: AlertType;
+  message: string;
+  severity: AlertSeverity;
+  timestamp: string;
+  acknowledged: boolean;
+};

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
+import AlertTab from '@/app/components/AlertsTab';
 import {
   Search,
   Notifications,
@@ -37,6 +38,21 @@ import {
   PieChart as PieChartIcon
 } from 'lucide-react';
 import { getPreviouslyCachedImageOrNull } from 'next/dist/server/image-optimizer';
+import { AlertFollowup, AlertSeverity, AlertType } from '../types';
+
+// Define Alert type if not already defined
+type Alert = {
+  id: string;
+  // alertId: string;
+  type: string;
+  metric: string;
+  message: string;
+  severity: string;
+  timestamp: string;
+  acknowledged: boolean;
+  data?: any;
+};
+
 
 // Register ChartJS components
 ChartJS.register(ArcElement, Tooltip, Legend, LinearScale, CategoryScale, BarElement, PointElement, annotationPlugin, LineElement, Title);
@@ -110,66 +126,71 @@ type FollowUpData = {
 };
 
 type MetricsData = {
-  current_metrics: {
-    percent_new_diagnoses: number;
-    percent_bp_followup: number;
-    percent_bg_followup: number;
-    percent_bp_controlled: number;
-    timestamp: string;
-    changes: {
-      new_diagnoses: number;
-      bp_followup: number;
-      bg_followup: number;
-      bp_controlled: number;
+  status: string;
+  data: {
+    current_metrics: {
+      percent_new_diagnoses: number;
+      percent_bp_followup: number;
+      percent_bg_followup: number;
+      percent_bp_controlled: number;
+      timestamp: string;
+      changes?: {
+        new_diagnoses: number;
+        bp_followup: number;
+        bg_followup: number;
+        bp_controlled: number;
+      };
     };
-  };
-  historical_data: Array<{
-    timestamp: string;
-    percent_bp_followup: number;
-    percent_bg_followup: number;
-    percent_new_diagnoses: number;
-    percent_bp_controlled: number;
-    performance_declined?: boolean;
-    changes?: {
-      new_diagnoses: number;
-      bp_followup: number;
-      bg_followup: number;
-      bp_controlled: number;
+    historical_data: Array<{
+      timestamp: string;
+      percent_bp_followup: number;
+      percent_bg_followup: number;
+      percent_new_diagnoses: number;
+      percent_bp_controlled: number;
+      changes?: {
+        new_diagnoses: number;
+        bp_followup: number;
+        bg_followup: number;
+        bp_controlled: number;
+      };
+    }>;
+    performance_declined: boolean;
+    threshold_violations: {
+      new_diagnoses: boolean;
+      bp_followup: boolean;
+      bg_followup: boolean;
+      bp_controlled: boolean;
     };
-  }>;
-  last_checked: string;
-  performance_declined: boolean;
-  threshold_violations: {
-    new_diagnoses: boolean;
-    bp_followup: boolean;
-    bg_followup: boolean;
-    bp_controlled: boolean;
+    last_checked?: string;
   };
 };
 
-// Add default values for metrics
+// Update the default metrics to match the API response structure
 const defaultMetrics: MetricsData = {
-  current_metrics: {
-    percent_new_diagnoses: 0,
-    percent_bp_followup: 0,
-    percent_bg_followup: 0,
-    percent_bp_controlled: 0,
-    timestamp: new Date().toISOString(),
-    changes: {
-      new_diagnoses: 0,
-      bp_followup: 0,
-      bg_followup: 0,
-      bp_controlled: 0
-    }
-  },
-  historical_data: [],
-  last_checked: new Date().toISOString(),
-  performance_declined: false,
-  threshold_violations: {
-    new_diagnoses: false,
-    bp_followup: false,
-    bg_followup: false,
-    bp_controlled: false
+  status: "success",
+  data: {
+    current_metrics: {
+      percent_new_diagnoses: 0,
+      percent_bp_followup: 0,
+      percent_bg_followup: 0,
+      percent_bp_controlled: 0,
+      timestamp: new Date().toISOString(),
+      changes: {
+        new_diagnoses: 0,
+        bp_followup: 0,
+        bg_followup: 0,
+        bp_controlled: 0
+      }
+    },
+    historical_data: [],
+    performance_declined: false,
+    threshold_violations: {
+      new_diagnoses: false,
+      bp_followup: false,
+      bg_followup: false,
+      bp_controlled: false
+    },
+    last_checked: new Date().toISOString()
   }
 };
 
@@ -177,19 +198,19 @@ export default function FollowUpPage() {
   const [activeTab, setActiveTab] = useState('bp');
   const [data, setData] = useState<FollowUpData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  useEffect(() => {
+useEffect(() => {
     const fetchAllData = async () => {
       setIsLoading(true);
       setError(null);
   
       try {
-        // Fetch all data in parallel
         const [bpResponse, bgResponse, diagnosesResponse, metricsResponse] = await Promise.all([
           fetch('http://localhost:8010/api/bp-logs'),
           fetch('http://localhost:8010/api/glucose-logs'),
@@ -197,12 +218,10 @@ export default function FollowUpPage() {
           fetch('http://localhost:8010/api/monitoring-metrics')
         ]);
   
-        // Check all responses
         if (!bpResponse.ok || !bgResponse.ok || !diagnosesResponse.ok || !metricsResponse.ok) {
           throw new Error('Failed to fetch one or more data sources');
         }
   
-        // Parse all responses
         const [bpData, bgData, diagnosesData, metricsData] = await Promise.all([
           bpResponse.json(),
           bgResponse.json(),
@@ -210,14 +229,12 @@ export default function FollowUpPage() {
           metricsResponse.json()
         ]);
   
-        // Combine all data into a single object
-        const combinedData: FollowUpData = {
+        setData({
           bp_followups: bpData,
           bg_followups: bgData,
           diagnoses: diagnosesData,
-        };
-  
-        setData(combinedData);
+        });
+        setMetrics(metricsData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
@@ -228,81 +245,113 @@ export default function FollowUpPage() {
     fetchAllData();
   }, []);
 
+  // Periodic alert checks
   useEffect(() => {
-    const fetchMetrics = async () => {
-      setIsLoading(true);
-      setError(null);
+    const interval = setInterval(() => {
+      fetch('http://localhost:8010/api/monitoring-metrics')
+        .then(res => res.json())
+        .then(data => {
+          if (data.data) {
+            generateAlerts(data.data);
+          }
+        })
+        .catch(console.error);
+    }, 300000);
 
-      try {
-        const response = await fetch('http://localhost:8010/api/monitoring-metrics');
-        if (!response.ok) throw new Error('Failed to fetch metrics data');
-        const result = await response.json();
-        setMetrics(result);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchMetrics();
+    return () => clearInterval(interval);
   }, []);
 
-const PaginationControls = ({ 
-    currentPage, 
-    totalItems, 
-    itemsPerPage, 
-    onPageChange 
-  }: {
-    currentPage: number;
-    totalItems: number;
-    itemsPerPage: number;
-    onPageChange: (page: number) => void;
-  }) => {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
+  // Call this when you receive new metrics data
+  useEffect(() => {
+    if (metrics && metrics.data) {
+      generateAlerts(metrics.data);
+    }
+  }, [metrics]);
 
-    console.log({ currentPage, totalItems, itemsPerPage, totalPages }); 
-  
-    return (
-      <div className="flex justify-between items-center mt-4">
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className={`px-4 py-2 rounded-md ${currentPage === 1 ? 'bg-gray-200 cursor-not-allowed' : 'bg-persian-blue text-black hover:bg-persian-blue-dark'}`}
-        >
-          Previous
-        </button>
-        <span className="text-sm text-indigo">
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className={`px-4 py-2 rounded-md ${currentPage === totalPages ? 'bg-gray-200 cursor-not-allowed' : 'bg-persian-blue text-black hover:bg-persian-blue-dark'}`}
-        >
-          Next
-        </button>
-      </div>
-    );
+  // Type guard
+  const isAlertType = (type: string): type is AlertType => {
+    return ['threshold', 'performance', 'inactive', 'activity'].includes(type);
   };
 
-  if (isLoading) return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-persian-blue"></div>
-    </div>
-  );
+  const isAlertSeverity = (severity: string): severity is AlertSeverity => {
+    return ['low', 'medium', 'high'].includes(severity);
+  };
 
-  if (error) return (
-    <div className="p-4 text-red-500 text-center">
-      Error: {error}. Please refresh the page.
-    </div>
-  );
+  // Conversion function
+  const convertToAlertFollowup = (alerts: Alert[]): AlertFollowup[] => {
+    return alerts
+      .filter((a) => isAlertType(a.type) && isAlertSeverity(a.severity))
+      .map((a) => ({
+        id: a.id,
+        type: a.type as AlertType,
+        message: a.message,
+        severity: a.severity as AlertSeverity,
+        timestamp: a.timestamp,
+        acknowledged: a.acknowledged,
+      }));
+  };
 
-  if (!data) return (
-    <div className="p-4 text-center">
-      No follow-up data available
-    </div>
-  );
+  const PaginationControls = ({ 
+      currentPage, 
+      totalItems, 
+      itemsPerPage, 
+      onPageChange 
+    }: {
+      currentPage: number;
+      totalItems: number;
+      itemsPerPage: number;
+      onPageChange: (page: number) => void;
+    }) => {
+      const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+      console.log({ currentPage, totalItems, itemsPerPage, totalPages }); 
+    
+      return (
+        <div className="flex justify-between items-center mt-4">
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className={`px-4 py-2 rounded-md ${currentPage === 1 ? 'bg-gray-200 cursor-not-allowed' : 'bg-persian-blue text-black hover:bg-persian-blue-dark'}`}
+          >
+            Previous
+          </button>
+          <span className="text-sm text-indigo">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className={`px-4 py-2 rounded-md ${currentPage === totalPages ? 'bg-gray-200 cursor-not-allowed' : 'bg-persian-blue text-black hover:bg-persian-blue-dark'}`}
+          >
+            Next
+          </button>
+        </div>
+      );
+    };
+
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-persian-blue"></div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="p-4 text-red-500 text-center">
+          Error: {error}. Please refresh the page.
+        </div>
+      );
+    }
+
+    if (!data) {
+      return (
+        <div className="p-4 text-center">
+          No follow-up data available
+        </div>
+      );
+    }
 
   const filteredBgFollowups = data?.bg_followups?.filter(item => 
     item.patient_track_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -325,66 +374,267 @@ const PaginationControls = ({
     item.diabetes_diag_controlled_type.toLowerCase().includes(searchTerm.toLowerCase())
   ) || []; // Default to an empty array if undefined
   
-  const renderTrendIndicator = (value: number) => {
-    if (value > 0) {
+
+// Update the historical data handling
+  const historicalData = metrics?.data?.historical_data || [];
+  const currentMetrics = metrics?.data?.current_metrics || defaultMetrics.data.current_metrics;
+  const thresholdViolations = metrics?.data?.threshold_violations || defaultMetrics.data.threshold_violations;
+
+const historicalChartData = {
+    labels: historicalData.map(item => {
+      const date = new Date(item.timestamp);
+      return isNaN(date.getTime()) ? 'Invalid Date' :
+        date.toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric'
+        });
+    }),
+    datasets: [
+      {
+        label: 'BP Follow-up Rate',
+        data: historicalData.map(item => item.percent_bp_followup),
+        borderColor: '#675BD2',
+        backgroundColor: 'rgba(103, 91, 210, 0.1)',
+        tension: 0.4
+      },
+      {
+        label: 'BG Follow-up Rate',
+        data: historicalData.map(item => item.percent_bg_followup),
+        borderColor: '#4CAF50',
+        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+        tension: 0.4
+      },
+      {
+        label: 'New Diagnoses',
+        data: historicalData.map(item => item.percent_new_diagnoses),
+        borderColor: '#FF9800',
+        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+        tension: 0.4
+      },
+      {
+        label: 'BP Controlled Rate',
+        data: historicalData.map(item => item.percent_bp_controlled),
+        borderColor: '#F44336',
+        backgroundColor: 'rgba(244, 67, 54, 0.1)',
+        tension: 0.4
+      }
+    ]
+  };
+
+  // First, create individual chart data configurations
+  const getChartData = (metric: 'bp_followup' | 'bg_followup' | 'new_diagnoses' | 'bp_controlled') => {
+    // Map metric to the correct property key
+    const metricKeyMap: Record<typeof metric, keyof (typeof historicalData)[number]> = {
+      bp_followup: 'percent_bp_followup',
+      bg_followup: 'percent_bg_followup',
+      new_diagnoses: 'percent_new_diagnoses',
+      bp_controlled: 'percent_bp_controlled',
+    };
+
+    return {
+      labels: historicalData.map(item => {
+        const date = new Date(item.timestamp);
+        return isNaN(date.getTime()) ? 'Invalid Date' : 
+          date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }),
+      datasets: [{
+        label: metric,
+        data: historicalData.map(item => item[metricKeyMap[metric]]),
+        borderColor: 
+          metric === 'bp_followup' ? '#675BD2' :
+          metric === 'bg_followup' ? '#4CAF50' :
+          metric === 'new_diagnoses' ? '#FF9800' : '#F44336',
+        backgroundColor: 
+          metric === 'bp_followup' ? 'rgba(103, 91, 210, 0.1)' :
+          metric === 'bg_followup' ? 'rgba(76, 175, 80, 0.1)' :
+          metric === 'new_diagnoses' ? 'rgba(255, 152, 0, 0.1)' : 'rgba(244, 67, 54, 0.1)',
+        tension: 0.4
+      }]
+    };
+  };
+
+  type MetricKey = 'new_diagnoses' | 'bp_followup' | 'bg_followup' | 'bp_controlled';
+
+  const renderTrendIndicator = (changeValue: number) => {
+    if (changeValue > 0) {
       return (
         <span className="text-green-500 flex items-center">
           <ArrowUpward className="h-4 w-4 mr-1" />
-          {Math.abs(value)}%
+          {Math.abs(changeValue)}%
         </span>
       );
-    } else if (value < 0) {
+    } else if (changeValue < 0) {
       return (
         <span className="text-red-500 flex items-center">
           <ArrowDownward className="h-4 w-4 mr-1" />
-          {Math.abs(value)}%
+          {Math.abs(changeValue)}%
         </span>
       );
     }
     return <span className="text-gray-500">0%</span>;
   };
 
-const historicalData = Array.isArray(metrics?.historical_data) ? metrics.historical_data : [];
+  // Function to generate alerts from metrics data
+  const generateAlerts = (metricsData: MetricsData['data']) => {
+    const newAlerts: Alert[] = [];
 
-const historicalChartData = {
-  labels: historicalData.map(item => {
-    const date = new Date(item.timestamp);
-    return isNaN(date.getTime()) ? 'Invalid Date' :
-      date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric'
+    // Threshold violations
+    if (metricsData.threshold_violations.new_diagnoses) {
+      newAlerts.push({
+        id: `threshold-new_diagnoses-${Date.now()}`,
+        type: 'threshold',
+        metric: 'new_diagnoses',
+        message: 'New diagnoses rate below 50% threshold',
+        severity: 'high',
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+        data: {
+          current: metricsData.current_metrics.percent_new_diagnoses
+        }
       });
-  }),
-  datasets: [
-    {
-      label: 'BP Follow-up Rate',
-      data: historicalData.map(item => item.percent_bp_followup),
-      borderColor: '#675BD2',
-      backgroundColor: 'rgba(103, 91, 210, 0.1)',
-      tension: 0.4
-    },
-    {
-      label: 'BG Follow-up Rate',
-      data: historicalData.map(item => item.percent_bg_followup),
-      borderColor: '#4CAF50',
-      backgroundColor: 'rgba(76, 175, 80, 0.1)',
-      tension: 0.4
-    },
-    {
-      label: 'New Diagnoses',
-      data: historicalData.map(item => item.percent_new_diagnoses),
-      borderColor: '#FF9800',
-      backgroundColor: 'rgba(255, 152, 0, 0.1)',
-      tension: 0.4
-    },
-    {
-      label: 'BP Controlled Rate',
-      data: historicalData.map(item => item.percent_bp_controlled),
-      borderColor: '#F44336',
-      backgroundColor: 'rgba(244, 67, 54, 0.1)',
-      tension: 0.4
     }
-  ]
+    if (metricsData.threshold_violations.bp_followup) {
+      newAlerts.push({
+        id: `threshold-bp_followup-${Date.now()}`,
+        type: 'threshold',
+        metric: 'bp_followup',
+        message: 'BP follow-up rate below 70% threshold',
+        severity: 'high',
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+        data: {
+          current: metricsData.current_metrics.percent_bp_followup
+        }
+      });
+    } 
+    if (metricsData.threshold_violations.bg_followup) {
+      newAlerts.push({
+        id: `threshold-bg_followup-${Date.now()}`,
+        type: 'threshold',
+        metric: 'bg_followup',
+        message: 'BG follow-up rate below 60% threshold',
+        severity: 'high',
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+        data: {
+          current: metricsData.current_metrics.percent_bg_followup
+        }
+      });
+    }
+    if (metricsData.threshold_violations.bp_controlled) {
+      newAlerts.push({
+        id: `threshold-bp_controlled-${Date.now()}`,
+        type: 'threshold',
+        metric: 'bp_controlled',
+        message: 'BP controlled rate below 80% threshold',
+        severity: 'high',
+        timestamp: new Date().toISOString(),
+        acknowledged: false,
+        data: {
+          current: metricsData.current_metrics.percent_bp_controlled
+        }
+      });
+    } 
+
+    // Performance declines
+    if (metricsData.performance_declined) {
+      if (
+        metricsData.current_metrics.changes &&
+        metricsData.current_metrics.changes.new_diagnoses !== undefined &&
+        metricsData.current_metrics.changes.new_diagnoses < 0
+      ) {
+        newAlerts.push({
+          id: `performance-new_diagnoses-${Date.now()}`,
+          type: 'performance',
+          metric: 'new_diagnoses',
+          message: `New diagnoses rate dropped by ${Math.abs(metricsData.current_metrics.changes.new_diagnoses)}%`,
+          severity: metricsData.current_metrics.changes.new_diagnoses <= -10 ? 'high' : 'medium',
+          timestamp: new Date().toISOString(),
+          acknowledged: false,
+          data: {
+            change: metricsData.current_metrics.changes.new_diagnoses
+          }
+        });
+      }
+      if (
+        metricsData.current_metrics.changes &&
+        metricsData.current_metrics.changes.bp_followup !== undefined &&
+        metricsData.current_metrics.changes.bp_followup < 0
+      ) {
+        newAlerts.push({
+          id: `performance-bp_followup-${Date.now()}`,
+          type: 'performance',
+          metric: 'bp_followup',
+          message: `BP follow-up rate dropped by ${Math.abs(metricsData.current_metrics.changes.bp_followup)}%`,
+          severity: metricsData.current_metrics.changes.bp_followup <= -10 ? 'high' : 'medium',
+          timestamp: new Date().toISOString(),
+          acknowledged: false,
+          data: {
+            change: metricsData.current_metrics.changes.bp_followup
+          }
+        });
+      }
+      if (
+        metricsData.current_metrics.changes &&
+        metricsData.current_metrics.changes.bg_followup !== undefined &&
+        metricsData.current_metrics.changes.bg_followup < 0
+      ) {
+        newAlerts.push({
+          id: `performance-bg_followup-${Date.now()}`,
+          type: 'performance',
+          metric: 'bg_followup',
+          message: `New diagnoses rate dropped by ${Math.abs(metricsData.current_metrics.changes.bg_followup)}%`,
+          severity: metricsData.current_metrics.changes.bg_followup <= -10 ? 'high' : 'medium',
+          timestamp: new Date().toISOString(),
+          acknowledged: false,
+          data: {
+            change: metricsData.current_metrics.changes.bg_followup
+          }
+        });
+      }
+      if (
+        metricsData.current_metrics.changes &&
+        metricsData.current_metrics.changes.bp_controlled !== undefined &&
+        metricsData.current_metrics.changes.bp_controlled < 0
+      ) {
+        newAlerts.push({
+          id: `performance-bp_controlled-${Date.now()}`,
+          type: 'performance',
+          metric: 'bp_controlled',
+          message: `BP controlled rate dropped by ${Math.abs(metricsData.current_metrics.changes.bp_controlled)}%`,
+          severity: metricsData.current_metrics.changes.bp_controlled <= -10 ? 'high' : 'medium',
+          timestamp: new Date().toISOString(),
+          acknowledged: false,
+          data: {
+            change: metricsData.current_metrics.changes.bp_controlled
+          }
+        });
+      }
+    }
+
+    // Add new alerts if they don't already exist
+    setAlerts(prev => {
+      const existingIds = prev.map(a => a.id);
+      const toAdd = newAlerts.filter(a => !existingIds.includes(a.id));
+      return [...prev, ...toAdd];
+    });
+  };
+
+
+// Acknowledge single alert
+const acknowledgeAlert = (id: string) => {
+  setAlerts(prev => 
+    prev.map(alert => 
+      alert.id === id ? { ...alert, acknowledged: true } : alert
+    )
+  );
+};
+
+// Acknowledge all alerts
+const acknowledgeAllAlerts = () => {
+  setAlerts(prev => 
+    prev.map(alert => ({ ...alert, acknowledged: true }))
+  );
 };
 
 
@@ -405,50 +655,105 @@ const historicalChartData = {
       No metrics data available
     </div>
   );
+
+  const AlertItem = ({ 
+  alert, 
+      onAcknowledge 
+    }: { 
+      alert: Alert; 
+      onAcknowledge: (id: string) => void 
+    }) => {
+      const severityColors = {
+        high: 'bg-red-50 border-red-200',
+        medium: 'bg-orange-50 border-orange-200',
+        low: 'bg-yellow-50 border-yellow-200'
+      };
+
+      return (
+        <li 
+          className={`p-4 rounded-lg border ${severityColors[alert.severity as 'high' | 'medium' | 'low']} ${
+            alert.acknowledged ? 'opacity-70' : ''
+          }`}
+        >
+          <div className="flex justify-between items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-semibold capitalize">
+                  {alert.metric.replace(/_/g, ' ')}
+                </h4>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  alert.severity === 'high' ? 'bg-red-100 text-red-800' :
+                  alert.severity === 'medium' ? 'bg-orange-100 text-orange-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {alert.severity}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">{alert.message}</p>
+            </div>
+            {!alert.acknowledged && (
+              <button
+                className="text-xs text-blue-600 hover:underline"
+                onClick={() => onAcknowledge(alert.id)}
+              >
+                Acknowledge
+              </button>
+            )}
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            {new Date(alert.timestamp).toLocaleString()}
+          </div>
+          {alert.data && (
+            <div className="mt-2 text-xs">
+              {Object.entries(alert.data).map(([key, value]) => (
+                <div key={key}>
+                  <span className="font-medium">{key}:</span> {String(value)}
+                </div>
+              ))}
+            </div>
+          )}
+        </li>
+      );
+    };
   
-    const metricsCards = [
-    {
-      label: 'New Diagnoses',
-      icon: WarningAmber,
-      current: metrics.current_metrics.percent_new_diagnoses,
-      previous: metrics.current_metrics.changes?.new_diagnoses ?? 0,
-      change: metrics.current_metrics.changes?.new_diagnoses ?? 0,
-      violated: metrics.threshold_violations?.new_diagnoses ?? false
-    },
-    {
-      label: 'BP Follow-up %',
-      icon: Activity,
-      current: metrics.current_metrics.percent_bp_followup,
-      previous: metrics.current_metrics.changes?.bp_followup ?? 0,
-      change: metrics.current_metrics.changes?.bp_followup ?? 0,
-      violated: metrics.threshold_violations?.bp_followup ?? false
-      // previous: metrics.current_metrics.changes.bp_followup,
-      // change: metrics.current_metrics.changes.bp_followup,
-      // violated: metrics.threshold_violations.bp_followup
-    },
-    {
-      label: 'BG Follow-up %',
-      icon: Thermometer,
-      current: metrics.current_metrics.percent_bg_followup,
-      previous: metrics.current_metrics.changes?.bg_followup ?? 0,
-      change: metrics.current_metrics.changes?.bg_followup ?? 0,
-      violated: metrics.threshold_violations?.bg_followup ?? false
-      // previous: metrics.current_metrics.changes.bg_followup,
-      // change: metrics.current_metrics.changes.bg_followup,
-      // violated: metrics.threshold_violations.bg_followup
-    },
-    {
-      label: 'BP Controlled %',
-      icon: BarChart3,
-      current: metrics.current_metrics.percent_bp_controlled,
-      previous: metrics.current_metrics.changes?.bp_controlled ?? 0,
-      change: metrics.current_metrics.changes?.bp_controlled ?? 0,
-      violated: metrics.threshold_violations?.bp_controlled ?? false
-      // previous: metrics.current_metrics.changes.bp_controlled,
-      // change: metrics.current_metrics.changes.bp_controlled,
-      // violated: metrics.threshold_violations.bp_controlled
-    }
-  ];
+const metricsCards = [
+  {
+    label: 'New Diagnoses',
+    icon: WarningAmber,
+    current: metrics.data?.current_metrics?.percent_new_diagnoses ?? 0,
+    previous: metrics.data?.historical_data?.[0]?.percent_new_diagnoses ?? 0,
+    // previous: metrics.data?.current_metrics?.changes?.new_diagnoses ?? 0,
+    change: metrics.data?.current_metrics?.changes?.new_diagnoses ?? 0,
+    violated: metrics.data?.threshold_violations?.new_diagnoses ?? false
+  },
+  {
+    label: 'BP Follow-up %',
+    icon: Activity,
+    current: metrics.data?.current_metrics?.percent_bp_followup ?? 0,
+    previous: metrics.data?.historical_data?.[0]?.percent_bp_followup ?? 0,
+    // previous: metrics.data?.current_metrics?.changes?.bp_followup ?? 0,
+    change: metrics.data?.current_metrics?.changes?.bp_followup ?? 0,
+    violated: metrics.data?.threshold_violations?.bp_followup ?? false
+  },
+  {
+    label: 'BG Follow-up %',
+    icon: Thermometer,
+    current: metrics.data?.current_metrics?.percent_bg_followup ?? 0,
+    previous: metrics.data?.historical_data?.[0]?.percent_bg_followup ?? 0,
+    // previous: metrics.data?.current_metrics?.changes?.bg_followup ?? 0,
+    change: metrics.data?.current_metrics?.changes?.bg_followup ?? 0,
+    violated: metrics.data?.threshold_violations?.bg_followup ?? false
+  },
+  {
+    label: 'BP Controlled %',
+    icon: BarChart3,
+    current: metrics.data?.current_metrics?.percent_bp_controlled ?? 0,
+    previous: metrics.data?.historical_data?.[0]?.percent_bp_controlled ?? 0,
+    // previous: metrics.data?.historical_data?.changes?.bp_controlled ?? 0,
+    change: metrics.data?.current_metrics?.changes?.bp_controlled ?? 0,
+    violated: metrics.data?.threshold_violations?.bp_controlled ?? false
+  }
+];
 
   return (
     <>
@@ -468,12 +773,23 @@ const historicalChartData = {
             </a>
           </div>
           <div className="flex items-center space-x-4">
-            <button className="flex items-center relative">
-              <Bell className="h-6 w-6" />
-              <span className="absolute -top-1 -right-1 bg-tacao text-tacao-darkest text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                3
-              </span>
-            </button>
+          <div
+              role="button"
+              tabIndex={0}
+              aria-label="Show Alerts"
+              title="Show Alerts"
+              onClick={() => setActiveTab('alerts')}
+              onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setActiveTab('alerts')}
+              className={`w-full text-left p-2 rounded-md flex items-center cursor-pointer ${
+                activeTab === 'alerts' ? 'bg-persian-blue text-black' : 'hover:bg-persian-blue'
+              }`}
+            >
+                <AlertTab
+                    alerts={convertToAlertFollowup(alerts)}
+                    onAcknowledge={acknowledgeAlert}
+                    setActiveTab={setActiveTab}
+                  />
+            </div>
             <button className="flex items-center" aria-label="Settings">
               <Settings className="h-6 w-6" />
             </button>
@@ -516,6 +832,13 @@ const historicalChartData = {
                 <AlertTriangle className="h-5 w-5 mr-2" />
                 Diagnoses
               </button>
+              <button 
+                className={`w-full text-left p-2 rounded-md flex items-center ${activeTab === 'alerts' ? 'bg-persian-blue text-black' : 'hover:bg-persian-blue-lightest'}`}
+                onClick={() => setActiveTab('alerts')}
+              >
+                <Bell className="h-5 w-5 mr-2" />
+                Alerts
+              </button>
             </nav>
           </aside>
 
@@ -546,31 +869,53 @@ const historicalChartData = {
             </div>
 
             {/* Metrics Overview */}
-              {/* New Diagnoses */}
-              <div className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
-                {metricsCards.map((card, index) => (
-                  <div key={index} className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-medium">{card.label}</h3>
-                        <card.icon className={`h-6 w-6 ${card.violated ? 'text-red-500' : 'text-green-500'}`} />
-                      </div>
-                      <p className="text-3xl font-bold">{card.current}{card.label.includes('%') ? '%' : ''}</p>
-                      <p className="text-sm text-indigo mt-2">vs {card.previous}{card.label.includes('%') ? '%' : ''} last period</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              {metricsCards.map((card, index) => (
+                <div key={index} className="bg-white rounded-xl p-6 shadow-lg border-t-4 border-[#675BD2] flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-medium">{card.label}</h3>
+                      <card.icon className={`h-6 w-6 ${card.violated ? 'text-red-500' : 'text-green-500'}`} />
                     </div>
-                    <p className={`mt-4 text-sm ${card.change < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                    <p className="text-3xl font-bold">{card.current}%</p>
+                    <p className="text-sm text-indigo mt-2">vs Previous {card.previous}%</p>
+                  </div>
+                  <div className="mt-4">
+                    {/* {renderTrendIndicator(card.change)} */}
+                    <p className={`text-sm ${card.change < 0 ? 'text-red-500' : 'text-green-600'}`}>
                       {card.change < 0 ? `${Math.abs(card.change)}% drop` : `${card.change}% increase`}
                     </p>
                   </div>
-                ))}
+                </div>
+              ))}
             </div>
 
 
             {/* Follow-up Rates Chart */}
             <div className="bg-white rounded-xl p-6 shadow-lg mb-6">
               <h3 className="text-xl font-medium mb-4">Historical Trends</h3>
-              <h2 className="text-lg font-semibold mb-4">Follow-up Performance Trends</h2>
-              <Line data={historicalChartData} options={{ responsive: true, plugins: { legend: { position: 'bottom' } } }} />
+              
+              {activeTab === 'overview' ? (
+                <>
+                  <h2 className="text-lg font-semibold mb-4">Follow-up Performance Trends</h2>
+                  <Line data={historicalChartData} options={{ responsive: true, plugins: { legend: { position: 'bottom' } } }} />
+                </>
+              ) : (
+                <>
+                  <h2 className="text-lg font-semibold mb-4">
+                    {activeTab === 'bp' ? 'BP Follow-up Trend' : 
+                    activeTab === 'bg' ? 'BG Follow-up Trend' : 
+                    'New Diagnoses Trend'}
+                  </h2>
+                  <Line 
+                    data={getChartData(
+                      activeTab === 'bp' ? 'bp_followup' : 
+                      activeTab === 'bg' ? 'bg_followup' : 'new_diagnoses'
+                    )} 
+                    options={{ responsive: true }} 
+                  />
+                </>
+              )}
             </div>
 
             {/* BP Follow-up Table */}
@@ -665,6 +1010,41 @@ const historicalChartData = {
               </div>
             )}
 
+                        {/* Alerts Section */}
+            {activeTab === 'alerts' && (
+              <div className="bg-white rounded-xl p-6 shadow-lg mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-medium">Alerts</h3>
+                  {alerts.length > 0 && (
+                    <button
+                      className="text-sm text-blue-600 hover:underline"
+                      onClick={acknowledgeAllAlerts}
+                      disabled={alerts.every(a => a.acknowledged)}
+                    >
+                      Acknowledge All
+                    </button>
+                  )}
+                </div>
+                
+                {alerts.length === 0 ? (
+                  <p className="text-gray-500">No alerts at this time.</p>
+                ) : (
+                  <ul className="space-y-4">
+                    {alerts
+                      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                      .map(alert => (
+                        <AlertItem 
+                          key={alert.id}
+                          alert={alert}
+                          onAcknowledge={acknowledgeAlert}
+                        />
+                      ))
+                    }
+                  </ul>
+                )}
+              </div>
+            )}
+
             {/* Diagnoses Table */}
             {activeTab === 'diagnoses' && (
               <div className="card rounded-lg shadow-sm overflow-hidden">
@@ -716,48 +1096,70 @@ const historicalChartData = {
             )}
 
             {/* Performance Alerts */}
-                        {metrics.performance_declined && (
-                          <div className="bg-red-50 border-l-4 mt-6 border-red-500 p-4 mb-6 rounded-r">
-                            <div className="flex">
-                              <div className="flex-shrink-0">
-                                <WarningAmber className="h-5 w-5 text-red-500" />
-                              </div>
-                              <div className="ml-3">
-                                <h3 className="text-sm font-medium text-red-800">Performance Alert</h3>
-                                <div className="mt-2 text-sm text-red-700">
-                                  <p>
-                                    One or more metrics have declined compared to the previous period. Please review patient follow-ups.
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+            {metrics.data?.performance_declined && (
+              <div className="bg-red-50 border-l-4 mt-6 border-red-500 p-4 mb-6 rounded-r">
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <WarningAmber className="h-5 w-5 text-red-500" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800">Performance Alert</h3>
+                    <div className="mt-2 text-sm text-red-700">
+                    {metrics?.data?.current_metrics?.changes && (
+                      <ul className="list-disc pl-5 space-y-1">
+                        {metrics.data.current_metrics.changes.new_diagnoses < 0 && (
+                          <li>
+                            New diagnoses rate dropped by {Math.abs(metrics.data.current_metrics.changes.new_diagnoses)}%
+                          </li>
                         )}
+                        {metrics.data.current_metrics.changes.bp_followup < 0 && (
+                          <li>
+                            BP follow-up rate dropped by {Math.abs(metrics.data.current_metrics.changes.bp_followup)}%
+                          </li>
+                        )}
+                        {metrics.data.current_metrics.changes.bg_followup < 0 && (
+                          <li>
+                            BG follow-up rate dropped by {Math.abs(metrics.data.current_metrics.changes.bg_followup)}%
+                          </li>
+                        )}
+                        {metrics.data.current_metrics.changes.bp_controlled < 0 && (
+                          <li>
+                            BP controlled rate dropped by {Math.abs(metrics.data.current_metrics.changes.bp_controlled)}%
+                          </li>
+                        )}
+                      </ul>
+                    )}
+
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
-                        {/* Threshold Violations */}
-                        {(metrics.threshold_violations.new_diagnoses || 
-                          metrics.threshold_violations.bp_followup || 
-                          metrics.threshold_violations.bg_followup || 
-                          metrics.threshold_violations.bp_controlled) && (
-                          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-r">
-                            <div className="flex">
-                              <div className="flex-shrink-0">
-                                <WarningAmber className="h-5 w-5 text-yellow-500" />
-                              </div>
-                              <div className="ml-3">
-                                <h3 className="text-sm font-medium text-yellow-800">Threshold Warning</h3>
-                                <div className="mt-2 text-sm text-yellow-700">
-                                  <ul className="list-disc pl-5 space-y-1">
-                                    {metrics.threshold_violations.new_diagnoses && <li>New diagnoses rate is below 50%</li>}
-                                    {metrics.threshold_violations.bp_followup && <li>BP follow-up rate is below 50%</li>}
-                                    {metrics.threshold_violations.bg_followup && <li>BG follow-up rate is below 50%</li>}
-                                    {metrics.threshold_violations.bp_controlled && <li>BP controlled rate is below 50%</li>}
-                                  </ul>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+            {/* Threshold Violations */}
+          {(metrics.data?.threshold_violations?.new_diagnoses || 
+            metrics.data?.threshold_violations?.bp_followup || 
+            metrics.data?.threshold_violations?.bg_followup || 
+            metrics.data?.threshold_violations?.bp_controlled) && (
+            <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-r">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <WarningAmber className="h-5 w-5 text-yellow-500" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">Threshold Warning</h3>
+                  <div className="mt-2 text-sm text-yellow-700">
+                    <ul className="list-disc pl-5 space-y-1">
+                      {metrics.data?.threshold_violations?.new_diagnoses && <li>New diagnoses rate is below 50%</li>}
+                      {metrics.data?.threshold_violations?.bp_followup && <li>BP follow-up rate is below 50%</li>}
+                      {metrics.data?.threshold_violations?.bg_followup && <li>BG follow-up rate is below 50%</li>}
+                      {metrics.data?.threshold_violations?.bp_controlled && <li>BP controlled rate is below 50%</li>}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           </main>
         </div>
       </div>
