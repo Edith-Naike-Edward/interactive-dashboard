@@ -25,7 +25,7 @@ interface FilterState {
   ageGroup?: string;
   category?: string;
   name?: string; // For screening table, used for patient name search
-  glucoseType?: string; // For glucose log table, used for condition search
+  glucose_type?: string;// For glucose log table, used for condition search
   bmi?: string; // For screening table, used for BMI search
   siteName?: string; // For screening table, used for site name search
   condition?: string;
@@ -33,9 +33,10 @@ interface FilterState {
   gender?: string;
   riskLevel?: string;
   startDate?: string;
+  cvd_risk_level?: string;
   endDate?: string;
   // New filter fields
-  diagnosisType?: string;
+  diagnosisType?: boolean | string; // For diagnosis table, used for diabetes diagnosis
   lifestyleType?: string;
   complianceType?: string;
   visitType?: string;
@@ -275,9 +276,9 @@ export default function DataTables() {
 
   const filterBpLog = (item: any, key: string, value: string): boolean => {
     switch (key) {
-      case 'riskLevel':
+      case 'cvd_risk_level':
         if (!value) return true;
-        return item.risk_level?.toLowerCase() === value.toLowerCase();
+        return item.cvd_risk_level?.toLowerCase() === value.toLowerCase();
       
       case 'startDate':
         if (!value || !item.date) return true;
@@ -293,30 +294,31 @@ export default function DataTables() {
   };
 
   const filterGlucoseLog = (item: any, key: string, value: string): boolean => {
-    switch (key) {
-      case 'condition': // Used for glucose type in this table
-        if (!value) return true;
-        return item.type?.toLowerCase() === value.toLowerCase();
-      
-      case 'startDate':
-        if (!value || !item.dateTime) return true;
-        return new Date(item.dateTime) >= new Date(value);
-      
-      case 'endDate':
-        if (!value || !item.dateTime) return true;
-        return new Date(item.dateTime) <= new Date(value);
-      
-      default:
-        return true;
-    }
-  };
+  switch (key) {
+    case 'glucose_type':
+      if (!value) return true;
+      return item.glucose_type?.toLowerCase() === value.toLowerCase();
+
+    case 'startDate':
+      if (!value || !item.glucose_date_time) return true;
+      return new Date(item.glucose_date_time) >= new Date(value);
+
+    case 'endDate':
+      if (!value || !item.glucose_date_time) return true;
+      return new Date(item.glucose_date_time) <= new Date(value);
+
+    default:
+      return true;
+  }
+};
+
 
   const filterDiagnosis = (item: any, key: string, value: string): boolean => {
     switch (key) {
-      case 'condition':
+      case 'diagnosisType':
         if (!value) return true;
-        if (value === 'diabetes') return item.diabetes;
-        if (value === 'hypertension') return item.htn;
+        if (value === 'is_diabetes_diagnosis') return item.is_diabetes_diagnosis;
+        if (value === 'is_htn_diagnosis') return item.is_htn_diagnosis;
         return true;
       
       case 'startDate':
@@ -336,11 +338,11 @@ export default function DataTables() {
     switch (key) {
       case 'lifestyle-name':
         if (!value) return true;
-        return item.lifestyleName?.toLowerCase().includes(value.toLowerCase());
+        return item.lifestyle_name?.toLowerCase().includes(value.toLowerCase());
       
       case 'answer':
         if (!value) return true;
-        return item.lifestyleAnswer?.toLowerCase().includes(value.toLowerCase());
+        return item.answerOptions?.toLowerCase().includes(value.toLowerCase());
       
       case 'comments':
         if (!value) return true;
@@ -600,7 +602,7 @@ const getColumnsForTable = (tableId: string): string[] => {
     case 'patient-table':
       return ['ID', 'Name', 'Age', 'Gender', 'Location', 'Conditions', 'Insurance', 'Status', 'Last Updated'];
     case 'glucose-log':
-      return ['Log ID', 'Patient Track ID', 'Glucose Value', 'Type', 'Date/Time', 'Last Meal', 'Status'];
+      return ['Log ID', 'Patient ID', 'Glucose Value', 'Type', 'Date/Time', 'Last Meal', 'Status'];
     case 'bp-log':
       return ['Log ID', 'Patient Track ID', 'BP Reading', 'Pulse', 'BMI', 'Risk Level', 'Date'];
     case 'diagnosis':

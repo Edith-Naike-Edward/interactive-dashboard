@@ -13,6 +13,7 @@ interface FilterState {
   cvd_risk_score?: string;
   cvd_risk_level?: string;
   risk_level?: string;
+  glucose_type?: string;
   // New filter fields
   diagnosisType?: string;
   answerOptions?: string;
@@ -27,6 +28,7 @@ interface FilterState {
   hasMedicalReview?: string;
   complaintSearch?: string;
   clinicalNoteSearch?: string;
+  comments?: string;
   site_name?: string;
 }
 
@@ -70,10 +72,18 @@ const risk_level = [
   { label: 'High', value: 'High' }
 ];
 
-const diagnosisTypes = [
+const cvd_risk_level = [
+  { label: 'All Levels', value: '' },
+  { label: 'Low', value: 'Low' },
+  { label: 'Medium', value: 'Medium' },
+  { label: 'High', value: 'High' }
+];
+
+
+const diagnosisType = [
   { label: 'All Types', value: '' },
-  { label: 'Diabetes', value: 'diabetes' },
-  { label: 'Hypertension', value: 'hypertension' },
+  { label: 'Diabetes', value: 'is_diabetes_diagnosis' },
+  { label: 'Hypertension', value: 'is_htn_diagnosis' },
   { label: 'Both', value: 'both' }
 ];
 
@@ -213,25 +223,31 @@ export function FilterPanel({ activeTable, onApply }: FilterPanelProps) {
 
   const renderBpLogFilters = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {renderSelect('riskLevel', 'Risk Level', filters.risk_level, risk_level, 'risk_level')}
+      {renderSelect('cvd_risk_level', 'Risk Level', filters.cvd_risk_level, cvd_risk_level, 'cvd_risk_level')}
       {renderDateRange()}
     </div>
   );
 
   const renderGlucoseLogFilters = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {renderSelect('glucose-type', 'Glucose Type', filters.condition, [
-        { label: 'All Types', value: '' },
-        { label: 'Fasting Blood Sugar', value: 'FBS' },
-        { label: 'Random Blood Sugar', value: 'RBS' }
-      ], 'condition')}
+      {renderSelect(
+        'glucose-type',
+        'Glucose Type',
+        filters.glucose_type,
+        [
+          { label: 'All Types', value: '' },
+          { label: 'Fasting Blood Sugar', value: 'FBS' },
+          { label: 'Random Blood Sugar', value: 'RBS' }
+        ],
+        'glucose_type'
+      )}
       {renderDateRange()}
     </div>
   );
 
   const renderDiagnosisFilters = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {renderSelect('diagnosis-type', 'Diagnosis Type', filters.diagnosisType, diagnosisTypes, 'diagnosisType')}
+      {renderSelect('diagnosisType', 'Diagnosis Type', filters.diagnosisType, diagnosisType, 'diagnosisType')}
       {renderDateRange()}
       {renderInput('diagnosis-year', 'Year of Diagnosis', filters.startDate, 'Enter year', 'startDate', 'number')}
     </div>
@@ -239,9 +255,9 @@ export function FilterPanel({ activeTable, onApply }: FilterPanelProps) {
 
   const renderLifestyleFilters = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {renderSelect('lifestyle-name', 'Lifestyle Name', filters.lifestyle_name, lifestyleTypes, 'lifestyleType')}
+      {renderSelect('lifestyle-name', 'Lifestyle Name', filters.lifestyle_name, lifestyleTypes, 'lifestyle_name')}
       {renderInput('lifestyle-answer', 'Answer Contains', filters.answerOptions, 'Search answers', 'answerOptions')}
-      {renderInput('lifestyle-comments', 'Comments Contains', filters.clinicalNoteSearch, 'Search comments', 'clinicalNoteSearch')}
+      {renderInput('lifestyle-comments', 'Comments Contains', filters.comments, 'Search comments', 'comments')}
     </div>
   );
 
@@ -435,33 +451,33 @@ export function FilterPanel({ activeTable, onApply }: FilterPanelProps) {
     </div>
   );
 
-const renderFilters = () => {
-  console.log('Active table ID:', activeTable); // Debug log
-  
-  switch (activeTable) {
-    case 'patient-table':
-      return renderPatientFilters();
-    case 'bp-log':
-      return renderBpLogFilters();
-    case 'glucose-log':
-      return renderGlucoseLogFilters();
-    case 'diagnosis':
-      return renderDiagnosisFilters();
-    case 'lifestyle':
-      return renderLifestyleFilters();
-    case 'compliance':
-      return renderComplianceFilters();
-    case 'visit':
-      return renderVisitFilters();
-    case 'review':
-      return renderMedicalReviewFilters();
-    case 'screening':
-      return renderScreeningFilters();
-    default:
-      console.warn(`No filters defined for table: ${activeTable}`);
-      return null;
-  }
-};
+  const renderFilters = () => {
+    console.log('Active table ID:', activeTable); // Debug log
+    
+    switch (activeTable) {
+      case 'patient-table':
+        return renderPatientFilters();
+      case 'bp-log':
+        return renderBpLogFilters();
+      case 'glucose-log':
+        return renderGlucoseLogFilters();
+      case 'diagnosis':
+        return renderDiagnosisFilters();
+      case 'lifestyle':
+        return renderLifestyleFilters();
+      case 'compliance':
+        return renderComplianceFilters();
+      case 'visit':
+        return renderVisitFilters();
+      case 'review':
+        return renderMedicalReviewFilters();
+      case 'screening':
+        return renderScreeningFilters();
+      default:
+        console.warn(`No filters defined for table: ${activeTable}`);
+        return null;
+    }
+  };
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-md border border-gray-200 mb-4">

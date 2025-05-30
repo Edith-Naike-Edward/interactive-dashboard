@@ -464,10 +464,6 @@ export default function Dashboard() {
                   <span className="text-sm font-medium text-gray-800">BG Follow Up</span>
                 </button>
                 
-                <button className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-lg hover:bg-amber-50 hover:border-amber-300 transition-colors">
-                  <AlertTriangle size={32} className="text-amber-600 mb-2" />
-                  <span className="text-sm font-medium text-gray-800">High Risk Patients</span>
-                </button>
               </div>
             </div>
           </div>
@@ -557,16 +553,6 @@ export default function Dashboard() {
                   </div>
                 </div>
                 
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-gray-700">Patient Compliance</span>
-                    <span className="text-gray-500">76%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    {/* <div className="bg-green-500 h-2 rounded-full" style={{ width: '76%' }}></div> */}
-                    <div className="bg-green-500 h-2 rounded-full progress-76"></div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

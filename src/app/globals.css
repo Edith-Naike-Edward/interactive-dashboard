@@ -26,6 +26,11 @@
   --bizarre-darkest: #464141;
 }
 
+.complaint-badge {
+  background-color: var(--complaint-bg, #0088fe);
+  font-size: var(--complaint-font-size, 16px);
+}
+
 body {
   font-family: var(--font-sans);
 }
@@ -53,3 +58,142 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--indigo-lightest);
 }
 
+.stat-card-center {
+  text-align: center;
+}
+
+.stat-card-value {
+  font-size: 24px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.anomaly-dashboard {
+  padding: 24px;
+}
+
+.stats-row {
+  margin-bottom: 24px;
+}
+
+/* General styles */
+.anomaly-dashboard {
+  padding: 24px;
+}
+
+/* Title styles */
+.dashboard-title {
+  margin-bottom: 24px !important;
+}
+
+/* Stats row styles */
+.stats-row {
+  margin-bottom: 24px;
+}
+
+.stats-card .ant-card-body {
+  padding: 0;
+}
+
+.card-content {
+  padding: 24px;
+}
+
+/* Stat card styles */
+.stat-card-center {
+  text-align: center;
+}
+
+.stat-card-value {
+  font-size: 24px;
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+.stat-card-icon {
+  margin-right: 8px;
+}
+
+.trend-up {
+  color: red;
+  margin-left: 8px;
+}
+
+.trend-down {
+  color: green;
+  margin-left: 8px;
+}
+
+/* Filter header styles */
+.filter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.filter-header h3 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* Select filter styles */
+.severity-filter {
+  width: 180px;
+}
+
+.alert-type-filter {
+  width: 220px;
+}
+
+.limit-filter {
+  width: 100px;
+}
+
+/* Expanded row styles */
+.expanded-row {
+  margin: 0;
+}
+
+.expanded-row p {
+  margin: 4px 0;
+}
+
+/* Stat Card Styles */
+.stat-card-center {
+  text-align: center;
+}
+
+.stat-card-value {
+  font-size: 24px;
+  font-weight: bold;
+  margin-top: 8px;
+  color: var(--stat-color, #1890ff);
+}
+
+.stat-card-icon {
+  margin-right: 8px;
+}
+
+.trend-up {
+  color: red;
+  margin-left: 8px;
+}
+
+.trend-down {
+  color: green;
+  margin-left: 8px;
+}
+
+/* Card Styles */
+.stats-card .ant-card-body,
+.anomaly-card .ant-card-body {
+  padding: 0;
+}
+
+.card-content {
+  padding: 24px;
+}
+
+/* ... rest of your existing CSS ... */
